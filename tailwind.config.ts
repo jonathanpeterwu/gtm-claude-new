@@ -23,12 +23,16 @@ const config: Config = {
           muted: 'var(--text-muted)',
         },
         accent: {
-          blue: '#4f8ff7',
+          blue: '#2563eb',   /* brand-600 */
           purple: '#7c5cfc',
           green: '#34d399',
           yellow: '#fbbf24',
           red: '#f87171',
           orange: '#fb923c',
+          rose: '#fda4af',   /* rose-300 - CTA accent */
+        },
+        brand: {
+          600: '#2563eb',
         },
         border: {
           subtle: 'var(--border-subtle)',
@@ -41,6 +45,11 @@ const config: Config = {
       },
       fontSize: {
         '2xs': ['0.65rem', { lineHeight: '0.9rem' }],
+      },
+      boxShadow: {
+        'soft': '0 1px 2px 0 rgb(0 0 0 / 0.03)',
+        'soft-md': '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.03)',
+        'soft-lg': '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.03)',
       },
       animation: {
         'slide-in': 'slideIn 0.2s ease-out',

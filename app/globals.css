@@ -2,37 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark mode (default) */
+/* Dark mode (default) - zinc palette per style guide */
 :root, .dark {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-tertiary: #0f3460;
-  --bg-hover: #1f2b47;
-  --bg-selected: #233554;
-  --text-primary: #e8e8e8;
-  --text-secondary: #a0a0b8;
-  --text-muted: #6b6b80;
-  --border-subtle: #2a2a44;
-  --border-default: #333355;
-  --scrollbar-thumb: #333355;
-  --scrollbar-hover: #4a4a6a;
+  --bg-primary: #09090b;    /* zinc-950 */
+  --bg-secondary: #18181b;  /* zinc-900 */
+  --bg-tertiary: #27272a;   /* zinc-800 */
+  --bg-hover: #3f3f46;      /* zinc-700 */
+  --bg-selected: #27272a;   /* zinc-800 */
+  --text-primary: #f4f4f5;  /* zinc-100 */
+  --text-secondary: #a1a1aa;/* zinc-400 */
+  --text-muted: #71717a;    /* zinc-500 */
+  --border-subtle: #27272a; /* zinc-800 */
+  --border-default: #3f3f46;/* zinc-700 */
+  --scrollbar-thumb: #3f3f46;
+  --scrollbar-hover: #52525b;
   color-scheme: dark;
 }
 
-/* Light mode */
+/* Light mode - slate palette per style guide */
 .light {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fb;
-  --bg-tertiary: #eef1f5;
-  --bg-hover: #f0f2f5;
-  --bg-selected: #e3e8f0;
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a6a;
-  --text-muted: #8b8ba0;
-  --border-subtle: #e2e4e9;
-  --border-default: #d1d5db;
-  --scrollbar-thumb: #c5c8ce;
-  --scrollbar-hover: #a0a4ab;
+  --bg-primary: #f8fafc;    /* slate-50 */
+  --bg-secondary: #ffffff;  /* white */
+  --bg-tertiary: #f1f5f9;   /* slate-100 */
+  --bg-hover: #f1f5f9;      /* slate-100 */
+  --bg-selected: #e2e8f0;   /* slate-200 */
+  --text-primary: #0f172a;  /* slate-900 */
+  --text-secondary: #475569;/* slate-600 */
+  --text-muted: #94a3b8;    /* slate-400 */
+  --border-subtle: #e2e8f0; /* slate-200 */
+  --border-default: #cbd5e1;/* slate-300 */
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-hover: #94a3b8;
   color-scheme: light;
 }
 
@@ -63,12 +63,12 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(79, 143, 247, 0.3);
+  background: rgba(253, 164, 175, 0.3); /* rose-300 */
 }
 
 /* Focus outlines */
 *:focus-visible {
-  outline: 2px solid #4f8ff7;
+  outline: 2px solid #fda4af; /* rose-300 */
   outline-offset: 2px;
 }
 
