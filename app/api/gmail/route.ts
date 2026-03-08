@@ -1,0 +1,89 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { listThreads, getThread, archiveThread, starThread, markRead, markUnread, sendReply, createDraft, searchEmails } from '@/lib/gmail/client';
+
+async function getAccessToken(): Promise<string | null> {
+  const session = await getServerSession(authOptions);
+  return (session as any)?.accessToken || null;
+}
+
+export async function GET(req: NextRequest) {
+  const token = await getAccessToken();
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const action = searchParams.get('action');
+
+  try {
+    if (action === 'threads') {
+      const query = searchParams.get('q') || '';
+      const pageToken = searchParams.get('pageToken') || undefined;
+      const result = await listThreads(token, query, 30, pageToken);
+      return NextResponse.json(result);
+    }
+
+    if (action === 'thread') {
+      const id = searchParams.get('id');
+      if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+      const thread = await getThread(token, id);
+      return NextResponse.json(thread);
+    }
+
+    if (action === 'search') {
+      const q = searchParams.get('q') || '';
+      const threads = await searchEmails(token, q);
+      return NextResponse.json({ threads });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (error: any) {
+    console.error('Gmail API error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const token = await getAccessToken();
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const { action } = body;
+
+  try {
+    if (action === 'archive') {
+      await archiveThread(token, body.threadId);
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'star') {
+      await starThread(token, body.threadId, body.starred);
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'markRead') {
+      await markRead(token, body.threadId);
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'markUnread') {
+      await markUnread(token, body.threadId);
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'reply') {
+      const id = await sendReply(token, body.threadId, body.to, body.subject, body.body, body.inReplyTo, body.references);
+      return NextResponse.json({ success: true, messageId: id });
+    }
+
+    if (action === 'draft') {
+      const id = await createDraft(token, body.threadId, body.to, body.subject, body.body, body.inReplyTo, body.references);
+      return NextResponse.json({ success: true, draftId: id });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (error: any) {
+    console.error('Gmail action error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
