@@ -100,6 +100,45 @@ export interface GTMTask {
   updatedAt: string;
 }
 
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  start: string;
+  end: string;
+  isAllDay: boolean;
+  meetLink?: string;
+  hangoutLink?: string;
+  htmlLink?: string;
+  status: 'confirmed' | 'tentative' | 'cancelled';
+  attendees?: CalendarAttendee[];
+  organizer?: { name?: string; email: string };
+  colorId?: string;
+}
+
+export interface CalendarAttendee {
+  name?: string;
+  email: string;
+  responseStatus: 'needsAction' | 'declined' | 'tentative' | 'accepted';
+  self?: boolean;
+}
+
+export interface CreateEventInput {
+  summary: string;
+  description?: string;
+  location?: string;
+  start: string;
+  end: string;
+  isAllDay?: boolean;
+  attendees?: string[];
+  addMeet?: boolean;
+}
+
+export interface UpdateEventInput extends Partial<CreateEventInput> {
+  id: string;
+}
+
 export interface KeyboardShortcut {
   key: string;
   modifiers?: ('ctrl' | 'shift' | 'alt' | 'meta')[];
