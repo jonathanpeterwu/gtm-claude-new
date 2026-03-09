@@ -78,7 +78,9 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'improve', text: body, instruction: 'Improve clarity and tone' }),
       });
+      if (!res.ok) throw new Error('API error');
       const data = await res.json();
+      if (!data.text) throw new Error('No improved text returned');
       setBody(data.text);
       toast.success('Text improved');
     } catch {
