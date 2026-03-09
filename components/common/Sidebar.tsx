@@ -9,6 +9,7 @@ import {
   Star,
   Send,
   FileText,
+  Calendar,
   CheckSquare,
   Settings,
   LogOut,
@@ -26,6 +27,7 @@ import clsx from 'clsx';
 const NAV_ITEMS = [
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
   { href: '/inbox?filter=starred', icon: Star, label: 'Starred' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
