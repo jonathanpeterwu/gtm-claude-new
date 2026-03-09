@@ -79,6 +79,11 @@ export default function TasksPage() {
                         return (
                           <div
                             key={task.id}
+                            onClick={() => {
+                              const statuses: GTMTask['status'][] = ['todo', 'in_progress', 'waiting', 'done'];
+                              const nextIdx = (statuses.indexOf(task.status) + 1) % statuses.length;
+                              updateTask(task.id, { status: statuses[nextIdx], updatedAt: new Date().toISOString() });
+                            }}
                             className="rounded-lg border border-border-subtle bg-bg-secondary p-3 hover:border-accent-blue/30 transition cursor-pointer"
                           >
                             <div className="flex items-start justify-between gap-2">

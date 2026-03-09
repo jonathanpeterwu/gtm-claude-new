@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Thread, DraftTone } from '@/types';
+import { Thread, DraftTone, GTMTask } from '@/types';
 import { Brain, FileText, CheckSquare, Wand2, Loader2, Search } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
+import { useInboxStore } from '@/lib/store';
 
 interface AIActionsProps {
   thread: Thread;
@@ -26,6 +27,7 @@ export function AIActions({ thread, userEmail, onDraftGenerated, summary, onSumm
   const [selectedTone, setSelectedTone] = useState<DraftTone>('professional');
   const [draft, setDraft] = useState<string | null>(null);
   const [tasks, setTasks] = useState<any[] | null>(null);
+  const addTask = useInboxStore((s) => s.addTask);
 
   const handleDraft = async () => {
     setLoading('draft');
@@ -73,7 +75,26 @@ export function AIActions({ thread, userEmail, onDraftGenerated, summary, onSumm
       });
       const data = await res.json();
       setTasks(data.tasks);
-      toast.success(`${data.tasks.length} tasks extracted`);
+
+      const lastMsg = thread.messages[thread.messages.length - 1];
+      const now = new Date().toISOString();
+      for (const task of data.tasks) {
+        const gtmTask: GTMTask = {
+          id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          threadId: thread.id,
+          title: task.title,
+          description: task.description || '',
+          status: 'todo',
+          priority: task.priority || 'medium',
+          dueDate: task.dueDate || undefined,
+          contact: lastMsg?.from || { name: '', email: '' },
+          createdAt: now,
+          updatedAt: now,
+        };
+        addTask(gtmTask);
+      }
+
+      toast.success(`${data.tasks.length} task${data.tasks.length !== 1 ? 's' : ''} extracted and added`);
     } catch {
       toast.error('Failed to extract tasks');
     } finally {
