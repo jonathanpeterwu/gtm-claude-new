@@ -124,6 +124,21 @@ export interface CalendarAttendee {
   self?: boolean;
 }
 
+export interface CreateEventInput {
+  summary: string;
+  description?: string;
+  location?: string;
+  start: string;
+  end: string;
+  isAllDay?: boolean;
+  attendees?: string[];
+  addMeet?: boolean;
+}
+
+export interface UpdateEventInput extends Partial<CreateEventInput> {
+  id: string;
+}
+
 export interface KeyboardShortcut {
   key: string;
   modifiers?: ('ctrl' | 'shift' | 'alt' | 'meta')[];

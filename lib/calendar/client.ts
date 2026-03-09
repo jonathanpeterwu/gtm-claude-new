@@ -1,5 +1,5 @@
 import { google, calendar_v3 } from 'googleapis';
-import { CalendarEvent, CalendarAttendee } from '@/types';
+import { CalendarEvent, CalendarAttendee, CreateEventInput, UpdateEventInput } from '@/types';
 
 export function getCalendarClient(accessToken: string): calendar_v3.Calendar {
   const auth = new google.auth.OAuth2();
@@ -56,6 +56,97 @@ export async function listTodayAndTomorrowEvents(
   ]);
 
   return { today, tomorrow };
+}
+
+export async function createEvent(
+  accessToken: string,
+  input: CreateEventInput
+): Promise<CalendarEvent> {
+  const calendar = getCalendarClient(accessToken);
+
+  const requestBody: calendar_v3.Schema$Event = {
+    summary: input.summary,
+    description: input.description,
+    location: input.location,
+    start: input.isAllDay
+      ? { date: input.start }
+      : { dateTime: input.start, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    end: input.isAllDay
+      ? { date: input.end }
+      : { dateTime: input.end, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    attendees: input.attendees?.map((email) => ({ email })),
+  };
+
+  if (input.addMeet) {
+    requestBody.conferenceData = {
+      createRequest: {
+        requestId: `superuser-${Date.now()}`,
+        conferenceSolutionKey: { type: 'hangoutsMeet' },
+      },
+    };
+  }
+
+  const res = await calendar.events.insert({
+    calendarId: 'primary',
+    requestBody,
+    conferenceDataVersion: input.addMeet ? 1 : 0,
+    sendUpdates: input.attendees?.length ? 'all' : 'none',
+  });
+
+  return parseCalendarEvent(res.data);
+}
+
+export async function updateEvent(
+  accessToken: string,
+  input: UpdateEventInput
+): Promise<CalendarEvent> {
+  const calendar = getCalendarClient(accessToken);
+
+  // Fetch existing event first to merge
+  const existing = await calendar.events.get({
+    calendarId: 'primary',
+    eventId: input.id,
+  });
+
+  const requestBody: calendar_v3.Schema$Event = { ...existing.data };
+
+  if (input.summary !== undefined) requestBody.summary = input.summary;
+  if (input.description !== undefined) requestBody.description = input.description;
+  if (input.location !== undefined) requestBody.location = input.location;
+  if (input.start !== undefined) {
+    requestBody.start = input.isAllDay
+      ? { date: input.start }
+      : { dateTime: input.start, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+  }
+  if (input.end !== undefined) {
+    requestBody.end = input.isAllDay
+      ? { date: input.end }
+      : { dateTime: input.end, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+  }
+  if (input.attendees !== undefined) {
+    requestBody.attendees = input.attendees.map((email) => ({ email }));
+  }
+
+  const res = await calendar.events.update({
+    calendarId: 'primary',
+    eventId: input.id,
+    requestBody,
+    sendUpdates: 'all',
+  });
+
+  return parseCalendarEvent(res.data);
+}
+
+export async function deleteEvent(
+  accessToken: string,
+  eventId: string
+): Promise<void> {
+  const calendar = getCalendarClient(accessToken);
+  await calendar.events.delete({
+    calendarId: 'primary',
+    eventId,
+    sendUpdates: 'all',
+  });
 }
 
 function parseCalendarEvent(event: calendar_v3.Schema$Event): CalendarEvent {

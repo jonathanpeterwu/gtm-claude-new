@@ -16,7 +16,7 @@ export const authOptions: AuthOptions = {
             'https://www.googleapis.com/auth/gmail.compose',
             'https://www.googleapis.com/auth/gmail.modify',
             'https://www.googleapis.com/auth/calendar.readonly',
-            'https://www.googleapis.com/auth/calendar.events.readonly',
+            'https://www.googleapis.com/auth/calendar.events',
           ].join(' '),
           access_type: 'offline',
           prompt: 'consent',

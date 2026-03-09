@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState, useCallback } from 'react';
+import { useSession, signIn } from 'next-auth/react';
 import { CalendarEvent } from '@/types';
 import { format, isAfter, parseISO, differenceInMinutes } from 'date-fns';
 import {
@@ -13,8 +13,12 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Plus,
+  Pencil,
+  RefreshCw,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { EventModal } from './EventModal';
 
 export function UpcomingMeetings() {
   const { data: session } = useSession();
@@ -24,31 +28,45 @@ export function UpcomingMeetings() {
   const [error, setError] = useState<string | null>(null);
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/calendar?action=today-tomorrow');
+      if (!res.ok) throw new Error('Failed to fetch calendar');
+      const data = await res.json();
+      setTodayEvents(data.today || []);
+      setTomorrowEvents(data.tomorrow || []);
+      setError(null);
+    } catch {
+      setError('Calendar unavailable');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!session) return;
-
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/calendar?action=today-tomorrow');
-        if (!res.ok) throw new Error('Failed to fetch calendar');
-        const data = await res.json();
-        setTodayEvents(data.today || []);
-        setTomorrowEvents(data.tomorrow || []);
-        setError(null);
-      } catch {
-        setError('Calendar unavailable');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchEvents();
-    // Refresh every 5 minutes
     const interval = setInterval(fetchEvents, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, fetchEvents]);
+
+  const handleCreateEvent = () => {
+    setEditingEvent(null);
+    setShowEventModal(true);
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setShowEventModal(true);
+  };
+
+  const handleEventSaved = () => {
+    fetchEvents();
+  };
 
   if (!session) return null;
 
@@ -60,81 +78,104 @@ export function UpcomingMeetings() {
   const nextMeeting = upcomingToday[0];
 
   return (
-    <div className="border-b border-border-subtle">
-      {/* Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-text-muted hover:bg-bg-hover transition"
-      >
-        <span className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5" />
-          Today&apos;s Schedule
-        </span>
-        {expanded ? (
-          <ChevronUp className="h-3.5 w-3.5" />
-        ) : (
-          <ChevronDown className="h-3.5 w-3.5" />
-        )}
-      </button>
-
-      {expanded && (
-        <div className="px-3 pb-3">
-          {loading ? (
-            <div className="flex items-center gap-2 px-1 py-2 text-xs text-text-muted">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-accent-blue border-t-transparent" />
-              Loading calendar...
-            </div>
-          ) : error ? (
-            <p className="px-1 py-2 text-xs text-text-muted">{error}</p>
-          ) : upcomingToday.length === 0 && allDayToday.length === 0 ? (
-            <p className="px-1 py-2 text-xs text-text-muted">No meetings today</p>
-          ) : (
-            <div className="space-y-1">
-              {/* Next meeting highlight */}
-              {nextMeeting && <NextMeetingCard event={nextMeeting} />}
-
-              {/* All-day events */}
-              {allDayToday.map((event) => (
-                <EventRow key={event.id} event={event} />
-              ))}
-
-              {/* Remaining meetings */}
-              {upcomingToday.slice(1).map((event) => (
-                <EventRow key={event.id} event={event} />
-              ))}
-            </div>
-          )}
-
-          {/* Tomorrow section */}
-          {tomorrowEvents.length > 0 && (
-            <div className="mt-2">
-              <button
-                onClick={() => setShowTomorrow(!showTomorrow)}
-                className="flex w-full items-center gap-1 px-1 py-1 text-2xs text-text-muted hover:text-text-secondary transition"
-              >
-                {showTomorrow ? (
-                  <ChevronUp className="h-3 w-3" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" />
-                )}
-                Tomorrow ({tomorrowEvents.length} event{tomorrowEvents.length !== 1 ? 's' : ''})
-              </button>
-              {showTomorrow && (
-                <div className="space-y-1 mt-1">
-                  {tomorrowEvents.map((event) => (
-                    <EventRow key={event.id} event={event} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+    <>
+      <div className="border-b border-border-subtle">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted hover:text-text-secondary transition"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Today&apos;s Schedule
+            {expanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            onClick={handleCreateEvent}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium text-accent-blue hover:bg-accent-blue/10 transition"
+            title="Create event"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New
+          </button>
         </div>
+
+        {expanded && (
+          <div className="px-3 pb-3">
+            {loading ? (
+              <div className="flex items-center gap-2 px-1 py-2 text-xs text-text-muted">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-accent-blue border-t-transparent" />
+                Loading calendar...
+              </div>
+            ) : error ? (
+              <div className="px-1 py-2">
+              <p className="text-xs text-text-muted">{error}</p>
+              <button
+                onClick={() => signIn('google')}
+                className="mt-1.5 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-2xs font-medium text-accent-blue hover:bg-accent-blue/10 transition"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Reconnect with calendar permissions
+              </button>
+            </div>
+            ) : upcomingToday.length === 0 && allDayToday.length === 0 ? (
+              <p className="px-1 py-2 text-xs text-text-muted">No meetings today</p>
+            ) : (
+              <div className="space-y-1">
+                {nextMeeting && <NextMeetingCard event={nextMeeting} onEdit={handleEditEvent} />}
+
+                {allDayToday.map((event) => (
+                  <EventRow key={event.id} event={event} onEdit={handleEditEvent} />
+                ))}
+
+                {upcomingToday.slice(1).map((event) => (
+                  <EventRow key={event.id} event={event} onEdit={handleEditEvent} />
+                ))}
+              </div>
+            )}
+
+            {tomorrowEvents.length > 0 && (
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowTomorrow(!showTomorrow)}
+                  className="flex w-full items-center gap-1 px-1 py-1 text-2xs text-text-muted hover:text-text-secondary transition"
+                >
+                  {showTomorrow ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                  Tomorrow ({tomorrowEvents.length} event{tomorrowEvents.length !== 1 ? 's' : ''})
+                </button>
+                {showTomorrow && (
+                  <div className="space-y-1 mt-1">
+                    {tomorrowEvents.map((event) => (
+                      <EventRow key={event.id} event={event} onEdit={handleEditEvent} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showEventModal && (
+        <EventModal
+          event={editingEvent}
+          onClose={() => setShowEventModal(false)}
+          onSaved={handleEventSaved}
+        />
       )}
-    </div>
+    </>
   );
 }
 
-function NextMeetingCard({ event }: { event: CalendarEvent }) {
+function NextMeetingCard({ event, onEdit }: { event: CalendarEvent; onEdit: (e: CalendarEvent) => void }) {
   const now = new Date();
   const start = parseISO(event.start);
   const minutesUntil = differenceInMinutes(start, now);
@@ -145,7 +186,7 @@ function NextMeetingCard({ event }: { event: CalendarEvent }) {
   return (
     <div
       className={clsx(
-        'rounded-lg border px-3 py-2.5 mb-1',
+        'group rounded-lg border px-3 py-2.5 mb-1',
         isHappening
           ? 'border-accent-green/30 bg-accent-green/5'
           : isSoon
@@ -155,7 +196,16 @@ function NextMeetingCard({ event }: { event: CalendarEvent }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-text-primary truncate">{event.summary}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-text-primary truncate">{event.summary}</p>
+            <button
+              onClick={() => onEdit(event)}
+              className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-text-muted hover:text-text-primary hover:bg-bg-hover transition"
+              title="Edit event"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="flex items-center gap-1 text-2xs text-text-secondary">
               <Clock className="h-3 w-3" />
@@ -206,7 +256,7 @@ function NextMeetingCard({ event }: { event: CalendarEvent }) {
   );
 }
 
-function EventRow({ event }: { event: CalendarEvent }) {
+function EventRow({ event, onEdit }: { event: CalendarEvent; onEdit: (e: CalendarEvent) => void }) {
   const joinLink = event.meetLink || event.hangoutLink;
 
   return (
@@ -223,17 +273,26 @@ function EventRow({ event }: { event: CalendarEvent }) {
           {event.isAllDay ? 'All day' : formatTimeRange(event.start, event.end)}
         </p>
       </div>
-      {joinLink && (
-        <a
-          href={joinLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-0 group-hover:opacity-100 text-accent-blue hover:text-accent-blue/80 transition"
-          title="Join meeting"
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+        <button
+          onClick={() => onEdit(event)}
+          className="text-text-muted hover:text-text-primary transition"
+          title="Edit event"
         >
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      )}
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        {joinLink && (
+          <a
+            href={joinLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-blue hover:text-accent-blue/80 transition"
+            title="Join meeting"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </div>
     </div>
   );
 }
