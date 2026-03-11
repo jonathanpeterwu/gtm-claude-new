@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useInboxStore } from '@/lib/store';
 import { Sidebar } from '@/components/common/Sidebar';
@@ -28,6 +28,13 @@ export default function InboxPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
   }, [status, router]);
+
+  // Re-authenticate if refresh token is invalid
+  useEffect(() => {
+    if ((session as any)?.error === 'RefreshAccessTokenError') {
+      signIn('google');
+    }
+  }, [session]);
 
   const fetchThreads = useCallback(async (query?: string) => {
     setLoading(true);
