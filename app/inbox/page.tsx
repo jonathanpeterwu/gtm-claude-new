@@ -42,7 +42,10 @@ export default function InboxPage() {
       const params = new URLSearchParams({ action: 'threads' });
       if (query) params.set('q', query);
       const res = await fetch(`/api/gmail?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Failed to fetch (${res.status})`);
+      }
       const data = await res.json();
       setThreads(data.threads);
 
@@ -61,8 +64,8 @@ export default function InboxPage() {
           })
           .catch(() => {});
       }
-    } catch {
-      toast.error('Failed to load emails');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to load emails');
     } finally {
       setLoading(false);
     }
