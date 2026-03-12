@@ -24,9 +24,18 @@ export async function listThreads(
 
   if (!res.data.threads) return { threads: [] };
 
-  const threadDetails = await Promise.all(
-    res.data.threads.map((t) => getThread(accessToken, t.id!))
-  );
+  // Fetch thread details in batches of 5 to avoid Gmail API rate limits
+  const threadIds = res.data.threads.map((t) => t.id!);
+  const threadDetails: (Thread | null)[] = [];
+  const batchSize = 5;
+
+  for (let i = 0; i < threadIds.length; i += batchSize) {
+    const batch = threadIds.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map((id) => getThread(accessToken, id))
+    );
+    threadDetails.push(...results);
+  }
 
   return {
     threads: threadDetails.filter(Boolean) as Thread[],

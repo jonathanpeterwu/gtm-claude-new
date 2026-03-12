@@ -38,8 +38,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
-    console.error('Gmail API error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error?.code || error?.status || 500;
+    const message = error?.errors?.[0]?.message || error?.message || 'Unknown Gmail error';
+    console.error('Gmail API error:', { status, message, action: searchParams.get('action') });
+    return NextResponse.json({ error: message }, { status: status >= 400 && status < 600 ? status : 500 });
   }
 }
 
@@ -83,7 +85,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
-    console.error('Gmail action error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error?.code || error?.status || 500;
+    const message = error?.errors?.[0]?.message || error?.message || 'Unknown Gmail error';
+    console.error('Gmail action error:', { status, message, action: body.action });
+    return NextResponse.json({ error: message }, { status: status >= 400 && status < 600 ? status : 500 });
   }
 }
