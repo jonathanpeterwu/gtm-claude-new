@@ -12,6 +12,7 @@ import { ComposeModal } from '@/components/compose/ComposeModal';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboard';
 import { Thread, GTMTask } from '@/types';
 import { UpcomingMeetings } from '@/components/calendar/UpcomingMeetings';
+import { InboxSuggestions } from '@/components/inbox/InboxSuggestions';
 import toast from 'react-hot-toast';
 
 function autoExtractTasksFromThreads(threads: Thread[], existingTasks: GTMTask[], addTask: (task: GTMTask) => void) {
@@ -63,7 +64,8 @@ export default function InboxPage() {
     threads, setThreads, isLoading, setLoading,
     selectedThreadId, selectThread, setCategories,
     composing, setComposing, removeThread, updateThread,
-    tasks, addTask,
+    tasks, addTask, addAccount, inboxMode, mergeThreads,
+    setThreadAccountMap, threadAccountMap,
   } = useInboxStore();
 
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
@@ -71,6 +73,18 @@ export default function InboxPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
   }, [status, router]);
+
+  // Register current session as an account
+  useEffect(() => {
+    if (session?.user?.email) {
+      addAccount({
+        email: session.user.email,
+        name: session.user.name || session.user.email.split('@')[0],
+        image: session.user.image || undefined,
+        color: '#3B82F6', // Will be overridden by store if already exists
+      });
+    }
+  }, [session, addAccount]);
 
   // Re-authenticate if refresh token is invalid
   useEffect(() => {
@@ -90,7 +104,17 @@ export default function InboxPage() {
         throw new Error(err.error || `Failed to fetch (${res.status})`);
       }
       const data = await res.json();
-      setThreads(data.threads);
+      const accountEmail = session?.user?.email || '';
+
+      // Track which account each thread belongs to
+      if (inboxMode === 'blended') {
+        mergeThreads(data.threads, accountEmail);
+      } else {
+        setThreads(data.threads);
+        const newMap = new Map<string, string>();
+        data.threads.forEach((t: Thread) => newMap.set(t.id, accountEmail));
+        setThreadAccountMap(newMap);
+      }
 
       // Auto-categorize with AI
       if (data.threads.length > 0) {
@@ -196,8 +220,11 @@ export default function InboxPage() {
 
         <div className="flex flex-1 min-h-0">
           {/* Thread list - left panel */}
-          <div className="w-96 flex-shrink-0 border-r border-border-subtle overflow-hidden">
-            <ThreadList onSelectThread={(id) => selectThread(id)} />
+          <div className="w-96 flex-shrink-0 border-r border-border-subtle overflow-hidden flex flex-col">
+            <InboxSuggestions onSelectThread={(id) => selectThread(id)} />
+            <div className="flex-1 overflow-hidden">
+              <ThreadList onSelectThread={(id) => selectThread(id)} />
+            </div>
           </div>
 
           {/* Thread view - right panel */}

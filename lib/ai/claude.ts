@@ -178,6 +178,43 @@ Return ONLY valid JSON, no markdown.`,
   }
 }
 
+export async function generateInboxSuggestions(threads: { id: string; subject: string; snippet: string; from: string; category?: string }[]): Promise<{
+  threadId: string;
+  type: 'reply_needed' | 'follow_up' | 'urgent' | 'delegate' | 'archive';
+  reason: string;
+  priority: number;
+}[]> {
+  const client = getClient();
+
+  const threadList = threads.slice(0, 15).map((t) =>
+    `[${t.id}] From: ${t.from} | Subject: ${t.subject} | Preview: ${t.snippet} | Category: ${t.category || 'unknown'}`
+  ).join('\n');
+
+  const res = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1000,
+    system: `You are an email triage assistant. Analyze the inbox and suggest the top actions the user should take.
+For each suggestion, provide:
+- threadId: the thread ID
+- type: one of "reply_needed", "follow_up", "urgent", "delegate", "archive"
+- reason: a brief 1-sentence explanation
+- priority: 1-5 (5 = most important)
+
+Return ONLY a valid JSON array. Focus on the most actionable items (max 5). Prioritize urgent and action-required emails.`,
+    messages: [{
+      role: 'user',
+      content: `Here are the inbox threads:\n${threadList}`,
+    }],
+  });
+
+  const text = res.content[0].type === 'text' ? res.content[0].text : '[]';
+  try {
+    return JSON.parse(text);
+  } catch {
+    return [];
+  }
+}
+
 export async function improveWriting(text: string, instruction: string): Promise<string> {
   const client = getClient();
 

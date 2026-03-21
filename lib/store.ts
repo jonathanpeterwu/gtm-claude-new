@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { Thread, EmailCategory, GTMTask } from '@/types';
+import { Thread, EmailCategory, GTMTask, LinkedAccount, InboxMode, InboxSuggestion } from '@/types';
+
+const ACCOUNT_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899'];
 
 interface InboxState {
   threads: Thread[];
@@ -13,6 +15,13 @@ interface InboxState {
   sidebarOpen: boolean;
   composing: boolean;
   aiDrafting: boolean;
+
+  // Multi-account
+  accounts: LinkedAccount[];
+  activeAccountEmail: string | null;
+  inboxMode: InboxMode;
+  threadAccountMap: Map<string, string>; // threadId -> account email
+  suggestions: InboxSuggestion[];
 
   setThreads: (threads: Thread[]) => void;
   selectThread: (id: string | null) => void;
@@ -29,6 +38,15 @@ interface InboxState {
   setSidebarOpen: (open: boolean) => void;
   setComposing: (composing: boolean) => void;
   setAiDrafting: (aiDrafting: boolean) => void;
+
+  // Multi-account actions
+  addAccount: (account: LinkedAccount) => void;
+  removeAccount: (email: string) => void;
+  setActiveAccount: (email: string | null) => void;
+  setInboxMode: (mode: InboxMode) => void;
+  setThreadAccountMap: (map: Map<string, string>) => void;
+  mergeThreads: (threads: Thread[], accountEmail: string) => void;
+  setSuggestions: (suggestions: InboxSuggestion[]) => void;
 }
 
 export const useInboxStore = create<InboxState>((set, get) => ({
@@ -43,6 +61,13 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   sidebarOpen: true,
   composing: false,
   aiDrafting: false,
+
+  // Multi-account
+  accounts: [],
+  activeAccountEmail: null,
+  inboxMode: 'single' as InboxMode,
+  threadAccountMap: new Map(),
+  suggestions: [],
 
   setThreads: (threads) => set({ threads }),
   selectThread: (id) => {
@@ -80,6 +105,34 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setComposing: (composing) => set({ composing }),
   setAiDrafting: (aiDrafting) => set({ aiDrafting }),
+
+  // Multi-account actions
+  addAccount: (account) =>
+    set((state) => {
+      if (state.accounts.some((a) => a.email === account.email)) return state;
+      const color = ACCOUNT_COLORS[state.accounts.length % ACCOUNT_COLORS.length];
+      return { accounts: [...state.accounts, { ...account, color }] };
+    }),
+  removeAccount: (email) =>
+    set((state) => ({
+      accounts: state.accounts.filter((a) => a.email !== email),
+      activeAccountEmail: state.activeAccountEmail === email ? null : state.activeAccountEmail,
+    })),
+  setActiveAccount: (email) => set({ activeAccountEmail: email }),
+  setInboxMode: (inboxMode) => set({ inboxMode }),
+  setThreadAccountMap: (threadAccountMap) => set({ threadAccountMap }),
+  mergeThreads: (threads, accountEmail) =>
+    set((state) => {
+      const newMap = new Map(state.threadAccountMap);
+      threads.forEach((t) => newMap.set(t.id, accountEmail));
+      // Merge, deduplicate by threadId, sort by date
+      const existing = state.threads.filter((t) => newMap.get(t.id) !== accountEmail);
+      const merged = [...existing, ...threads].sort(
+        (a, b) => new Date(b.lastMessageDate).getTime() - new Date(a.lastMessageDate).getTime()
+      );
+      return { threads: merged, threadAccountMap: newMap };
+    }),
+  setSuggestions: (suggestions) => set({ suggestions }),
 }));
 
 export function useFilteredThreads(): Thread[] {

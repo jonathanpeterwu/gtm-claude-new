@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import { AccountSwitcher } from './AccountSwitcher';
 
 const NAV_ITEMS = [
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
@@ -75,6 +76,13 @@ export function Sidebar() {
           {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
       </div>
+
+      {/* Account Switcher */}
+      {sidebarOpen && (
+        <div className="px-2 mb-2">
+          <AccountSwitcher />
+        </div>
+      )}
 
       {/* Compose button */}
       <div className="px-2 mb-2">

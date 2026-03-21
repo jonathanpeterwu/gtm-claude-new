@@ -14,10 +14,15 @@ interface ThreadRowProps {
 
 export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
   const categories = useInboxStore((s) => s.categories);
+  const inboxMode = useInboxStore((s) => s.inboxMode);
+  const threadAccountMap = useInboxStore((s) => s.threadAccountMap);
+  const accounts = useInboxStore((s) => s.accounts);
   const category = categories.get(thread.id) || thread.category;
   const catConfig = category ? CATEGORY_CONFIG[category] : null;
   const lastMsg = thread.messages[thread.messages.length - 1];
   const fromName = lastMsg?.from.name || lastMsg?.from.email?.split('@')[0] || 'Unknown';
+  const accountEmail = threadAccountMap.get(thread.id);
+  const account = accounts.find((a) => a.email === accountEmail);
 
   return (
     <div
@@ -28,9 +33,15 @@ export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
         thread.isUnread && 'bg-bg-hover/50'
       )}
     >
-      {/* Unread indicator */}
+      {/* Unread indicator + account dot */}
       <div className="mt-2 flex-shrink-0">
-        {thread.isUnread ? (
+        {inboxMode === 'blended' && account ? (
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: account.color }}
+            title={account.email}
+          />
+        ) : thread.isUnread ? (
           <div className="h-2 w-2 rounded-full bg-accent-blue" />
         ) : (
           <div className="h-2 w-2" />
