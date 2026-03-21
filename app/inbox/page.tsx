@@ -10,9 +10,51 @@ import { ThreadList } from '@/components/inbox/ThreadList';
 import { ThreadView } from '@/components/thread/ThreadView';
 import { ComposeModal } from '@/components/compose/ComposeModal';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboard';
-import { Thread } from '@/types';
+import { Thread, GTMTask } from '@/types';
 import { UpcomingMeetings } from '@/components/calendar/UpcomingMeetings';
 import toast from 'react-hot-toast';
+
+function autoExtractTasksFromThreads(threads: Thread[], existingTasks: GTMTask[], addTask: (task: GTMTask) => void) {
+  // Only extract from threads not already processed
+  const processedThreadIds = new Set(existingTasks.map((t) => t.threadId));
+  const newThreads = threads.filter((t) => !processedThreadIds.has(t.id));
+  if (newThreads.length === 0) return;
+
+  // Process in background, batch of 5 at a time
+  const batch = newThreads.slice(0, 5);
+  batch.forEach(async (thread) => {
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'extract-tasks', thread }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.tasks || data.tasks.length === 0) return;
+
+      const lastMsg = thread.messages[thread.messages.length - 1];
+      const now = new Date().toISOString();
+      for (const task of data.tasks) {
+        const gtmTask: GTMTask = {
+          id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          threadId: thread.id,
+          title: task.title,
+          description: task.description || '',
+          status: 'todo',
+          priority: task.priority || 'medium',
+          dueDate: task.dueDate || undefined,
+          contact: lastMsg?.from || { name: '', email: '' },
+          createdAt: now,
+          updatedAt: now,
+        };
+        addTask(gtmTask);
+      }
+    } catch {
+      // Silently fail for auto-extraction
+    }
+  });
+}
 
 export default function InboxPage() {
   const { data: session, status } = useSession();
@@ -21,6 +63,7 @@ export default function InboxPage() {
     threads, setThreads, isLoading, setLoading,
     selectedThreadId, selectThread, setCategories,
     composing, setComposing, removeThread, updateThread,
+    tasks, addTask,
   } = useInboxStore();
 
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
@@ -63,6 +106,9 @@ export default function InboxPage() {
             }
           })
           .catch(() => {});
+
+        // Auto-extract tasks from email threads
+        autoExtractTasksFromThreads(data.threads, tasks, addTask);
       }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to load emails');
