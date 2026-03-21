@@ -139,6 +139,22 @@ export interface UpdateEventInput extends Partial<CreateEventInput> {
   id: string;
 }
 
+export interface LinkedAccount {
+  email: string;
+  name: string;
+  image?: string;
+  color: string; // For visual differentiation
+}
+
+export type InboxMode = 'single' | 'blended';
+
+export interface InboxSuggestion {
+  threadId: string;
+  type: 'reply_needed' | 'follow_up' | 'urgent' | 'delegate' | 'archive';
+  reason: string;
+  priority: number; // 1-5, 5 being most important
+}
+
 export interface KeyboardShortcut {
   key: string;
   modifiers?: ('ctrl' | 'shift' | 'alt' | 'meta')[];
