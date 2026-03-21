@@ -17,7 +17,10 @@ export async function GET(req: NextRequest) {
 
   try {
     if (action === 'upcoming') {
-      const events = await listUpcomingEvents(token);
+      const timeMin = searchParams.get('timeMin') || undefined;
+      const timeMax = searchParams.get('timeMax') || undefined;
+      const maxResults = parseInt(searchParams.get('maxResults') || '10', 10);
+      const events = await listUpcomingEvents(token, maxResults, timeMin, timeMax);
       return NextResponse.json({ events });
     }
 
