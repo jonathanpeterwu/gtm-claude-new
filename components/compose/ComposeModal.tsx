@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 
 export function ComposeModal() {
   const setComposing = useInboxStore((s) => s.setComposing);
+  const activeAccountEmail = useInboxStore((s) => s.activeAccountEmail);
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -28,6 +29,7 @@ export function ComposeModal() {
           to,
           subject: subject || '(no subject)',
           body,
+          account: activeAccountEmail,
         }),
       });
       if (!res.ok) throw new Error('Failed');

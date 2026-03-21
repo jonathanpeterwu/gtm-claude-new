@@ -10,6 +10,7 @@ import { ThreadList } from '@/components/inbox/ThreadList';
 import { ThreadView } from '@/components/thread/ThreadView';
 import { ComposeModal } from '@/components/compose/ComposeModal';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboard';
+import { useLinkedAccountsSync, withAccount } from '@/lib/hooks/useLinkedAccounts';
 import { Thread, GTMTask } from '@/types';
 import { UpcomingMeetings } from '@/components/calendar/UpcomingMeetings';
 import { InboxSuggestions } from '@/components/inbox/InboxSuggestions';
@@ -66,7 +67,11 @@ export default function InboxPage() {
     composing, setComposing, removeThread, updateThread,
     tasks, addTask, addAccount, inboxMode, mergeThreads,
     setThreadAccountMap, threadAccountMap,
+    activeAccountEmail,
   } = useInboxStore();
+
+  // Sync linked accounts from session into the store
+  useLinkedAccountsSync();
 
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
 
@@ -98,7 +103,7 @@ export default function InboxPage() {
     try {
       const params = new URLSearchParams({ action: 'threads' });
       if (query) params.set('q', query);
-      const res = await fetch(`/api/gmail?${params}`);
+      const res = await fetch(withAccount(`/api/gmail?${params}`, activeAccountEmail));
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || `Failed to fetch (${res.status})`);
@@ -139,7 +144,7 @@ export default function InboxPage() {
     } finally {
       setLoading(false);
     }
-  }, [setThreads, setLoading, setCategories]);
+  }, [setThreads, setLoading, setCategories, activeAccountEmail]);
 
   useEffect(() => {
     if (session) fetchThreads();
@@ -161,7 +166,7 @@ export default function InboxPage() {
       await fetch('/api/gmail', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'archive', threadId: selectedThreadId }),
+        body: JSON.stringify({ action: 'archive', threadId: selectedThreadId, account: activeAccountEmail }),
       });
       removeThread(selectedThreadId);
       selectThread(null);
@@ -178,7 +183,7 @@ export default function InboxPage() {
       await fetch('/api/gmail', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'star', threadId: selectedThread.id, starred: newStarred }),
+        body: JSON.stringify({ action: 'star', threadId: selectedThread.id, starred: newStarred, account: activeAccountEmail }),
       });
       updateThread(selectedThread.id, { isStarred: newStarred });
       toast.success(newStarred ? 'Starred' : 'Unstarred');

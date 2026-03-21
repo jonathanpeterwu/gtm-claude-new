@@ -47,7 +47,7 @@ export function AccountSwitcher({ variant = 'sidebar', collapsed = false }: Acco
       setActiveAccount(null);
     } else {
       setActiveAccount(email);
-      signIn('google', undefined, { login_hint: email });
+      // No need to re-auth — tokens are preserved in the session JWT
     }
     setOpen(false);
   };
