@@ -1,18 +1,15 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useInboxStore } from '@/lib/store';
 import { useThemeStore } from '@/lib/hooks/useTheme';
 import { CATEGORY_CONFIG, EmailCategory } from '@/types';
 import {
   Inbox,
   Star,
-  Send,
-  FileText,
   Calendar,
   CheckSquare,
   Settings,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -78,11 +75,9 @@ export function Sidebar() {
       </div>
 
       {/* Account Switcher */}
-      {sidebarOpen && (
-        <div className="px-2 mb-2">
-          <AccountSwitcher />
-        </div>
-      )}
+      <div className="px-2 mb-2">
+        <AccountSwitcher collapsed={!sidebarOpen} />
+      </div>
 
       {/* Compose button */}
       <div className="px-2 mb-2">
@@ -159,20 +154,6 @@ export function Sidebar() {
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           {sidebarOpen && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
         </button>
-        {session && (
-          <button
-            onClick={() => signOut()}
-            className={clsx(
-              'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition',
-              !sidebarOpen && 'justify-center px-2'
-            )}
-          >
-            <LogOut className="h-4 w-4" />
-            {sidebarOpen && (
-              <span className="truncate text-xs">{session.user?.email || 'Sign out'}</span>
-            )}
-          </button>
-        )}
       </div>
     </aside>
   );

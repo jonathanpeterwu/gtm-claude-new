@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { SearchBar } from './SearchBar';
+import { AccountSwitcher } from './AccountSwitcher';
 import { RefreshCw, Keyboard } from 'lucide-react';
 import { useState } from 'react';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
@@ -13,7 +14,6 @@ interface HeaderProps {
 }
 
 export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
-  const { data: session } = useSession();
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   return (
@@ -39,13 +39,7 @@ export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
             <Keyboard className="h-4 w-4" />
           </button>
 
-          {session?.user?.image && (
-            <img
-              src={session.user.image}
-              alt=""
-              className="ml-2 h-7 w-7 rounded-full border border-border-subtle"
-            />
-          )}
+          <AccountSwitcher variant="header" />
         </div>
       </header>
 
