@@ -15,14 +15,13 @@ import { Thread, GTMTask } from '@/types';
 import { UpcomingMeetings } from '@/components/calendar/UpcomingMeetings';
 import { InboxSuggestions } from '@/components/inbox/InboxSuggestions';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 function autoExtractTasksFromThreads(threads: Thread[], existingTasks: GTMTask[], addTask: (task: GTMTask) => void) {
-  // Only extract from threads not already processed
   const processedThreadIds = new Set(existingTasks.map((t) => t.threadId));
   const newThreads = threads.filter((t) => !processedThreadIds.has(t.id));
   if (newThreads.length === 0) return;
 
-  // Process in background, batch of 5 at a time
   const batch = newThreads.slice(0, 5);
   batch.forEach(async (thread) => {
     try {
@@ -70,7 +69,6 @@ export default function InboxPage() {
     activeAccountEmail,
   } = useInboxStore();
 
-  // Sync linked accounts from session into the store
   useLinkedAccountsSync();
 
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
@@ -79,19 +77,17 @@ export default function InboxPage() {
     if (status === 'unauthenticated') router.replace('/');
   }, [status, router]);
 
-  // Register current session as an account
   useEffect(() => {
     if (session?.user?.email) {
       addAccount({
         email: session.user.email,
         name: session.user.name || session.user.email.split('@')[0],
         image: session.user.image || undefined,
-        color: '#3B82F6', // Will be overridden by store if already exists
+        color: '#3B82F6',
       });
     }
   }, [session, addAccount]);
 
-  // Re-authenticate if refresh token is invalid
   useEffect(() => {
     if ((session as any)?.error === 'RefreshAccessTokenError') {
       signIn('google');
@@ -111,7 +107,6 @@ export default function InboxPage() {
       const data = await res.json();
       const accountEmail = session?.user?.email || '';
 
-      // Track which account each thread belongs to
       if (inboxMode === 'blended') {
         mergeThreads(data.threads, accountEmail);
       } else {
@@ -121,7 +116,6 @@ export default function InboxPage() {
         setThreadAccountMap(newMap);
       }
 
-      // Auto-categorize with AI
       if (data.threads.length > 0) {
         fetch('/api/ai', {
           method: 'POST',
@@ -136,7 +130,6 @@ export default function InboxPage() {
           })
           .catch(() => {});
 
-        // Auto-extract tasks from email threads
         autoExtractTasksFromThreads(data.threads, tasks, addTask);
       }
     } catch (err: any) {
@@ -150,7 +143,6 @@ export default function InboxPage() {
     if (session) fetchThreads();
   }, [session, fetchThreads]);
 
-  // Load full thread when selected
   useEffect(() => {
     if (!selectedThreadId) {
       setSelectedThread(null);
@@ -192,11 +184,16 @@ export default function InboxPage() {
     }
   };
 
+  const handleBack = () => {
+    selectThread(null);
+    setSelectedThread(null);
+  };
+
   useKeyboardShortcuts({
     onArchive: handleArchive,
     onStar: handleStar,
     onOpen: () => selectedThreadId && setSelectedThread(threads.find((t) => t.id === selectedThreadId) || null),
-    onBack: () => { selectThread(null); setSelectedThread(null); },
+    onBack: handleBack,
     onCompose: () => setComposing(true),
     onReply: () => {},
     onDraft: () => {},
@@ -212,6 +209,8 @@ export default function InboxPage() {
 
   if (!session) return null;
 
+  const showThreadView = !!selectedThread;
+
   return (
     <div className="flex h-screen bg-bg-primary">
       <Sidebar />
@@ -224,20 +223,31 @@ export default function InboxPage() {
         />
 
         <div className="flex flex-1 min-h-0">
-          {/* Thread list - left panel */}
-          <div className="w-96 flex-shrink-0 border-r border-border-subtle overflow-hidden flex flex-col">
+          {/* Thread list — full width on mobile, fixed on desktop. Hidden on mobile when viewing a thread. */}
+          <div
+            className={clsx(
+              'flex-shrink-0 border-r border-border-subtle overflow-hidden flex flex-col',
+              'w-full md:w-96',
+              showThreadView && 'hidden md:flex'
+            )}
+          >
             <InboxSuggestions onSelectThread={(id) => selectThread(id)} />
             <div className="flex-1 overflow-hidden">
               <ThreadList onSelectThread={(id) => selectThread(id)} />
             </div>
           </div>
 
-          {/* Thread view - right panel */}
-          <div className="flex-1 min-w-0">
+          {/* Thread view — full width on mobile, flex-1 on desktop. Hidden on mobile when no thread selected. */}
+          <div
+            className={clsx(
+              'flex-1 min-w-0',
+              !showThreadView && 'hidden md:block'
+            )}
+          >
             {selectedThread ? (
               <ThreadView
                 thread={selectedThread}
-                onBack={() => { selectThread(null); setSelectedThread(null); }}
+                onBack={handleBack}
                 onArchive={handleArchive}
                 onStar={handleStar}
                 userEmail={session.user?.email || undefined}

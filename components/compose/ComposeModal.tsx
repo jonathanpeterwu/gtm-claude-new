@@ -61,8 +61,8 @@ export function ComposeModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-lg rounded-xl border border-border-subtle bg-bg-secondary shadow-2xl animate-slide-in">
+    <div className="fixed inset-0 z-50 flex items-end justify-end p-0 md:p-6 pointer-events-none">
+      <div className="pointer-events-auto w-full max-w-lg rounded-none md:rounded-xl border border-border-subtle bg-bg-secondary shadow-2xl animate-slide-in max-md:h-full max-md:flex max-md:flex-col safe-top safe-bottom">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
           <h3 className="text-sm font-medium">New Message</h3>
@@ -91,13 +91,13 @@ export function ComposeModal() {
         </div>
 
         {/* Body */}
-        <div className="px-4 py-2">
+        <div className="px-4 py-2 flex-1 max-md:overflow-y-auto">
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Write your message..."
             rows={10}
-            className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none"
+            className="w-full h-full min-h-[200px] bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none"
           />
         </div>
 

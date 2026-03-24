@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/common/Sidebar';
 import { useThemeStore } from '@/lib/hooks/useTheme';
-import { Sun, Moon, LogOut, User, Shield, Zap } from 'lucide-react';
+import { Sun, Moon, LogOut, User, Shield, Zap, Menu } from 'lucide-react';
+import { useInboxStore } from '@/lib/store';
 import clsx from 'clsx';
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { theme, setTheme } = useThemeStore();
+  const setSidebarOpen = useInboxStore((s) => s.setSidebarOpen);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
@@ -24,11 +26,14 @@ export default function SettingsPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col min-w-0">
-        <div className="border-b border-border-subtle bg-bg-secondary px-6 py-4">
+        <div className="border-b border-border-subtle bg-bg-secondary px-4 md:px-6 py-3 md:py-4 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="md:hidden rounded-lg p-1.5 text-text-secondary hover:bg-bg-hover">
+            <Menu className="h-5 w-5" />
+          </button>
           <h1 className="text-lg font-semibold">Settings</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 max-w-2xl">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-2xl">
           {/* Account */}
           <section className="mb-8">
             <h2 className="flex items-center gap-2 text-sm font-semibold mb-4">

@@ -16,6 +16,8 @@ import {
   Sun,
   Moon,
   PenSquare,
+  X,
+  Menu,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -52,82 +54,116 @@ export function Sidebar() {
   const { theme, toggleTheme } = useThemeStore();
 
   return (
-    <aside
-      className={clsx(
-        'flex h-screen flex-col border-r border-border-subtle bg-bg-secondary transition-all duration-200',
-        sidebarOpen ? 'w-56' : 'w-14'
+    <>
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-4">
-        {sidebarOpen && (
-          <Link href="/inbox" className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-accent-blue" />
-            <span className="text-sm font-bold">Superuser</span>
-          </Link>
+
+      <aside
+        className={clsx(
+          'flex h-screen flex-col border-r border-border-subtle bg-bg-secondary transition-all duration-200 safe-top safe-bottom',
+          // Desktop: inline sidebar
+          'hidden md:flex',
+          sidebarOpen ? 'w-56' : 'w-14',
+          // Mobile: slide-over drawer
+          'max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-72 max-md:shadow-2xl',
+          sidebarOpen ? 'max-md:flex max-md:translate-x-0' : 'max-md:hidden max-md:-translate-x-full',
         )}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary"
-        >
-          {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {/* Account Switcher */}
-      <div className="px-2 mb-2">
-        <AccountSwitcher collapsed={!sidebarOpen} />
-      </div>
-
-      {/* Compose button */}
-      <div className="px-2 mb-2">
-        <button
-          onClick={() => setComposing(true)}
-          className={clsx(
-            'flex w-full items-center gap-2 rounded-lg bg-accent-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-accent-blue/90',
-            !sidebarOpen && 'justify-center px-2'
-          )}
-        >
-          <PenSquare className="h-4 w-4" />
-          {sidebarOpen && 'Compose'}
-        </button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-2 overflow-y-auto">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-          const isActive = pathname === href || (href === '/inbox' && pathname === '/inbox');
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={clsx(
-                'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition',
-                isActive
-                  ? 'bg-bg-selected text-text-primary'
-                  : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
-                !sidebarOpen && 'justify-center px-2'
-              )}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              {sidebarOpen && label}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-4">
+          {(sidebarOpen) && (
+            <Link href="/inbox" className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-accent-blue" />
+              <span className="text-sm font-bold">Superuser</span>
             </Link>
-          );
-        })}
+          )}
+          {/* Desktop: collapse toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary hidden md:block"
+          >
+            {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {/* Mobile: close button */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary md:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-        {sidebarOpen && (
-          <>
-            <div className="mt-4 mb-2 px-3 text-2xs font-semibold uppercase tracking-wider text-text-muted">
+        {/* Account Switcher */}
+        <div className="px-2 mb-2">
+          <AccountSwitcher collapsed={!sidebarOpen} />
+        </div>
+
+        {/* Compose button */}
+        <div className="px-2 mb-2">
+          <button
+            onClick={() => { setComposing(true); setSidebarOpen(false); }}
+            className={clsx(
+              'flex w-full items-center gap-2 rounded-lg bg-accent-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-accent-blue/90',
+              !sidebarOpen && 'md:justify-center md:px-2'
+            )}
+          >
+            <PenSquare className="h-4 w-4" />
+            {(sidebarOpen || true) && <span className="md:hidden">Compose</span>}
+            {sidebarOpen && <span className="hidden md:inline">Compose</span>}
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-0.5 px-2 overflow-y-auto">
+          {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+            const isActive = pathname === href || (href === '/inbox' && pathname === '/inbox');
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => { if (window.innerWidth < 768) setSidebarOpen(false); }}
+                className={clsx(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition',
+                  isActive
+                    ? 'bg-bg-selected text-text-primary'
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
+                  !sidebarOpen && 'md:justify-center md:px-2'
+                )}
+              >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                {/* Always show label on mobile drawer, conditionally on desktop */}
+                <span className="md:hidden">{label}</span>
+                {sidebarOpen && <span className="hidden md:inline">{label}</span>}
+              </Link>
+            );
+          })}
+
+          {/* Categories — show in mobile drawer always, desktop only when expanded */}
+          <div className={clsx(!sidebarOpen && 'hidden md:hidden', sidebarOpen && 'md:block')}>
+            <div className="block md:hidden mt-4 mb-2 px-3 text-2xs font-semibold uppercase tracking-wider text-text-muted">
               Categories
             </div>
+            {sidebarOpen && (
+              <div className="hidden md:block mt-4 mb-2 px-3 text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                Categories
+              </div>
+            )}
             {CATEGORY_FILTERS.map((cat) => {
               const config = CATEGORY_CONFIG[cat];
               return (
                 <button
                   key={cat}
-                  onClick={() => setActiveFilter(activeFilter === cat ? 'all' : cat)}
+                  onClick={() => {
+                    setActiveFilter(activeFilter === cat ? 'all' : cat);
+                    if (window.innerWidth < 768) setSidebarOpen(false);
+                  }}
                   className={clsx(
-                    'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition',
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition compact-touch',
                     activeFilter === cat
                       ? 'bg-bg-selected text-text-primary'
                       : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
@@ -138,23 +174,24 @@ export function Sidebar() {
                 </button>
               );
             })}
-          </>
-        )}
-      </nav>
+          </div>
+        </nav>
 
-      {/* Footer */}
-      <div className="border-t border-border-subtle p-2 space-y-1">
-        <button
-          onClick={toggleTheme}
-          className={clsx(
-            'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition',
-            !sidebarOpen && 'justify-center px-2'
-          )}
-        >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          {sidebarOpen && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
-        </button>
-      </div>
-    </aside>
+        {/* Footer */}
+        <div className="border-t border-border-subtle p-2 space-y-1">
+          <button
+            onClick={toggleTheme}
+            className={clsx(
+              'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition',
+              !sidebarOpen && 'md:justify-center md:px-2'
+            )}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className="md:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+            {sidebarOpen && <span className="hidden md:inline">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
