@@ -109,3 +109,26 @@ html, body {
     text-wrap: balance;
   }
 }
+
+/* Email plain text rendering */
+.email-plain-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.email-plain-text .email-link {
+  color: #60a5fa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+  transition: opacity 0.15s;
+}
+
+.email-plain-text .email-link:hover {
+  opacity: 0.8;
+}
+
+.light .email-plain-text .email-link {
+  color: #2563eb;
+}
