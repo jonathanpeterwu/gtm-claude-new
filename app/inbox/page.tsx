@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useInboxStore } from '@/lib/store';
@@ -17,29 +17,36 @@ import { InboxSuggestions } from '@/components/inbox/InboxSuggestions';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
-function autoExtractTasksFromThreads(threads: Thread[], existingTasks: GTMTask[], addTask: (task: GTMTask) => void) {
+// Fire-and-forget background task extraction — only sends summaries, not full threads
+function backgroundExtractTasks(threads: Thread[], existingTasks: GTMTask[], addTask: (task: GTMTask) => void) {
   const processedThreadIds = new Set(existingTasks.map((t) => t.threadId));
   const newThreads = threads.filter((t) => !processedThreadIds.has(t.id));
   if (newThreads.length === 0) return;
 
-  const batch = newThreads.slice(0, 5);
-  batch.forEach(async (thread) => {
-    try {
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'extract-tasks', thread }),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.tasks || data.tasks.length === 0) return;
+  // Only send minimal data to AI
+  const summaries = newThreads.slice(0, 5).map((t) => ({
+    id: t.id,
+    subject: t.subject,
+    snippet: t.snippet,
+    from: t.messages[t.messages.length - 1]?.from,
+    messageCount: t.messages.length,
+  }));
 
-      const lastMsg = thread.messages[thread.messages.length - 1];
+  fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'extract-tasks', threads: summaries }),
+  })
+    .then((r) => r.ok ? r.json() : null)
+    .then((data) => {
+      if (!data?.tasks?.length) return;
       const now = new Date().toISOString();
       for (const task of data.tasks) {
-        const gtmTask: GTMTask = {
+        const thread = newThreads.find((t) => t.id === task.threadId);
+        const lastMsg = thread?.messages[thread.messages.length - 1];
+        addTask({
           id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          threadId: thread.id,
+          threadId: task.threadId || thread?.id || '',
           title: task.title,
           description: task.description || '',
           status: 'todo',
@@ -48,13 +55,10 @@ function autoExtractTasksFromThreads(threads: Thread[], existingTasks: GTMTask[]
           contact: lastMsg?.from || { name: '', email: '' },
           createdAt: now,
           updatedAt: now,
-        };
-        addTask(gtmTask);
+        });
       }
-    } catch {
-      // Silently fail for auto-extraction
-    }
-  });
+    })
+    .catch(() => {});
 }
 
 export default function InboxPage() {
@@ -63,15 +67,17 @@ export default function InboxPage() {
   const {
     threads, setThreads, isLoading, setLoading,
     selectedThreadId, selectThread, setCategories,
-    composing, setComposing, removeThread, updateThread,
+    composing, setComposing, updateThread,
     tasks, addTask, addAccount, inboxMode, mergeThreads,
-    setThreadAccountMap, threadAccountMap,
+    setThreadAccountMap,
     activeAccountEmail,
+    optimisticArchive, optimisticStar, optimisticMarkRead,
   } = useInboxStore();
 
   useLinkedAccountsSync();
 
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
@@ -95,11 +101,18 @@ export default function InboxPage() {
   }, [session]);
 
   const fetchThreads = useCallback(async (query?: string) => {
+    // Abort any in-flight request
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
     setLoading(true);
     try {
       const params = new URLSearchParams({ action: 'threads' });
       if (query) params.set('q', query);
-      const res = await fetch(withAccount(`/api/gmail?${params}`, activeAccountEmail));
+      const res = await fetch(withAccount(`/api/gmail?${params}`, activeAccountEmail), {
+        signal: controller.signal,
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || `Failed to fetch (${res.status})`);
@@ -116,6 +129,7 @@ export default function InboxPage() {
         setThreadAccountMap(newMap);
       }
 
+      // Background: categorize with AI (non-blocking)
       if (data.threads.length > 0) {
         fetch('/api/ai', {
           method: 'POST',
@@ -130,9 +144,11 @@ export default function InboxPage() {
           })
           .catch(() => {});
 
-        autoExtractTasksFromThreads(data.threads, tasks, addTask);
+        // Background: extract tasks
+        backgroundExtractTasks(data.threads, tasks, addTask);
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       toast.error(err?.message || 'Failed to load emails');
     } finally {
       setLoading(false);
@@ -143,51 +159,67 @@ export default function InboxPage() {
     if (session) fetchThreads();
   }, [session, fetchThreads]);
 
+  // Sync selected thread from store (memoized lookup)
   useEffect(() => {
     if (!selectedThreadId) {
       setSelectedThread(null);
       return;
     }
     const found = threads.find((t) => t.id === selectedThreadId);
-    if (found) setSelectedThread(found);
+    if (found) {
+      setSelectedThread(found);
+      // Auto-mark as read in background
+      if (found.isUnread) {
+        optimisticMarkRead(found.id);
+        fetch('/api/gmail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'markRead', threadId: found.id, account: activeAccountEmail }),
+        }).catch(() => {});
+      }
+    }
   }, [selectedThreadId, threads]);
 
-  const handleArchive = async () => {
+  // Optimistic archive — instant UI, background API
+  const handleArchive = useCallback(async () => {
     if (!selectedThreadId) return;
-    try {
-      await fetch('/api/gmail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'archive', threadId: selectedThreadId, account: activeAccountEmail }),
-      });
-      removeThread(selectedThreadId);
-      selectThread(null);
-      toast.success('Archived');
-    } catch {
-      toast.error('Failed to archive');
-    }
-  };
+    const archivedId = selectedThreadId;
+    const nextId = optimisticArchive(archivedId);
+    setSelectedThread(nextId ? threads.find((t) => t.id === nextId) || null : null);
+    toast.success('Archived');
 
-  const handleStar = async () => {
+    // Fire API in background
+    fetch('/api/gmail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'archive', threadId: archivedId, account: activeAccountEmail }),
+    }).catch(() => {
+      toast.error('Failed to archive on server');
+    });
+  }, [selectedThreadId, threads, optimisticArchive, activeAccountEmail]);
+
+  // Optimistic star — instant UI, background API
+  const handleStar = useCallback(async () => {
     if (!selectedThread) return;
     const newStarred = !selectedThread.isStarred;
-    try {
-      await fetch('/api/gmail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'star', threadId: selectedThread.id, starred: newStarred, account: activeAccountEmail }),
-      });
-      updateThread(selectedThread.id, { isStarred: newStarred });
-      toast.success(newStarred ? 'Starred' : 'Unstarred');
-    } catch {
-      toast.error('Failed to update star');
-    }
-  };
+    optimisticStar(selectedThread.id, newStarred);
+    toast.success(newStarred ? 'Starred' : 'Unstarred');
 
-  const handleBack = () => {
+    fetch('/api/gmail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'star', threadId: selectedThread.id, starred: newStarred, account: activeAccountEmail }),
+    }).catch(() => {
+      // Revert on failure
+      optimisticStar(selectedThread.id, !newStarred);
+      toast.error('Failed to update star');
+    });
+  }, [selectedThread, optimisticStar, activeAccountEmail]);
+
+  const handleBack = useCallback(() => {
     selectThread(null);
     setSelectedThread(null);
-  };
+  }, [selectThread]);
 
   useKeyboardShortcuts({
     onArchive: handleArchive,
@@ -223,7 +255,6 @@ export default function InboxPage() {
         />
 
         <div className="flex flex-1 min-h-0">
-          {/* Thread list — full width on mobile, fixed on desktop. Hidden on mobile when viewing a thread. */}
           <div
             className={clsx(
               'flex-shrink-0 border-r border-border-subtle overflow-hidden flex flex-col',
@@ -237,7 +268,6 @@ export default function InboxPage() {
             </div>
           </div>
 
-          {/* Thread view — full width on mobile, flex-1 on desktop. Hidden on mobile when no thread selected. */}
           <div
             className={clsx(
               'flex-1 min-w-0',

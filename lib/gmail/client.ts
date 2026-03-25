@@ -24,10 +24,10 @@ export async function listThreads(
 
   if (!res.data.threads) return { threads: [] };
 
-  // Fetch thread details in batches of 5 to avoid Gmail API rate limits
+  // Fetch thread details in parallel batches of 10
   const threadIds = res.data.threads.map((t) => t.id!);
   const threadDetails: (Thread | null)[] = [];
-  const batchSize = 5;
+  const batchSize = 10;
 
   for (let i = 0; i < threadIds.length; i += batchSize) {
     const batch = threadIds.slice(i, i + batchSize);
