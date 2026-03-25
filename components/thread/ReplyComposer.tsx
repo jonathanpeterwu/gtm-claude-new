@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Thread } from '@/types';
+import { useInboxStore } from '@/lib/store';
 import { Send, X, Wand2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,7 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
   const [body, setBody] = useState(initialDraft || '');
   const [sending, setSending] = useState(false);
   const [improving, setImproving] = useState(false);
+  const activeAccountEmail = useInboxStore((s) => s.activeAccountEmail);
 
   const lastMsg = thread.messages[thread.messages.length - 1];
   const replyTo = lastMsg.from.email;
@@ -35,6 +37,7 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
           body,
           inReplyTo: lastMsg.id,
           references: lastMsg.references,
+          account: activeAccountEmail,
         }),
       });
       if (!res.ok) throw new Error('Failed to send');
@@ -61,6 +64,7 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
           body,
           inReplyTo: lastMsg.id,
           references: lastMsg.references,
+          account: activeAccountEmail,
         }),
       });
       toast.success('Draft saved');

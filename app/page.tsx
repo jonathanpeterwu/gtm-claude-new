@@ -42,7 +42,7 @@ export default function LandingPage() {
         </p>
 
         {/* Feature cards */}
-        <div className="mb-10 grid grid-cols-3 gap-3">
+        <div className="mb-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-xl border border-border-subtle bg-bg-secondary p-5 shadow-soft transition-all duration-200 hover:shadow-soft-md">
             <Brain className="mx-auto mb-3 h-5 w-5 text-accent-purple opacity-80" />
             <div className="text-[13px] font-semibold text-text-primary">AI Triage</div>

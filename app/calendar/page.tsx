@@ -23,6 +23,7 @@ import {
   subWeeks,
   differenceInMinutes,
 } from 'date-fns';
+import { useInboxStore } from '@/lib/store';
 import {
   ChevronLeft,
   ChevronRight,
@@ -35,6 +36,8 @@ import {
   Clock,
   Pencil,
   ExternalLink,
+  Menu,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
@@ -52,6 +55,7 @@ export default function CalendarPage() {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedDayEvents, setSelectedDayEvents] = useState<CalendarEvent[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const setSidebarOpen = useInboxStore((s) => s.setSidebarOpen);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
@@ -168,9 +172,12 @@ export default function CalendarPage() {
 
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border-subtle bg-bg-secondary px-6 py-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold">
+        <div className="flex items-center justify-between border-b border-border-subtle bg-bg-secondary px-3 md:px-6 py-3 md:py-4 gap-2">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden rounded-lg p-1.5 text-text-secondary hover:bg-bg-hover flex-shrink-0">
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="text-sm md:text-lg font-semibold truncate">
               {viewMode === 'month'
                 ? format(currentDate, 'MMMM yyyy')
                 : `Week of ${format(calendarStart, 'MMM d')} - ${format(calendarEnd, 'MMM d, yyyy')}`}
@@ -232,10 +239,10 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={handleCreateEvent}
-              className="flex items-center gap-1.5 rounded-lg bg-accent-blue px-3 py-2 text-xs font-medium text-white hover:bg-accent-blue/90 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-accent-blue px-2 md:px-3 py-2 text-xs font-medium text-white hover:bg-accent-blue/90 transition"
             >
               <Plus className="h-3.5 w-3.5" />
-              New Event
+              <span className="hidden sm:inline">New Event</span>
             </button>
           </div>
         </div>
@@ -254,9 +261,10 @@ export default function CalendarPage() {
                   {weekDays.map((day) => (
                     <div
                       key={day}
-                      className="px-2 py-2 text-center text-xs font-medium text-text-muted"
+                      className="px-1 md:px-2 py-2 text-center text-2xs md:text-xs font-medium text-text-muted"
                     >
-                      {day}
+                      <span className="md:hidden">{day[0]}</span>
+                      <span className="hidden md:inline">{day}</span>
                     </div>
                   ))}
                 </div>
@@ -273,7 +281,7 @@ export default function CalendarPage() {
                         key={day.toISOString()}
                         onClick={() => handleDayClick(day)}
                         className={clsx(
-                          'min-h-[100px] border-b border-r border-border-subtle p-1.5 cursor-pointer transition hover:bg-bg-hover',
+                          'min-h-[60px] md:min-h-[100px] border-b border-r border-border-subtle p-1 md:p-1.5 cursor-pointer transition hover:bg-bg-hover',
                           !isCurrentMonth && 'bg-bg-secondary/50',
                           isSelected && 'bg-accent-blue/5 ring-1 ring-inset ring-accent-blue/20'
                         )}
@@ -328,9 +336,12 @@ export default function CalendarPage() {
             )}
           </div>
 
-          {/* Day detail sidebar */}
+          {/* Day detail — sidebar on desktop, bottom sheet on mobile */}
           {selectedDayEvents !== null && selectedDate && (
-            <div className="w-80 flex-shrink-0 border-l border-border-subtle bg-bg-secondary overflow-y-auto">
+            <>
+              {/* Mobile backdrop */}
+              <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => { setSelectedDayEvents(null); setSelectedDate(null); }} />
+              <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl border-t border-border-subtle bg-bg-secondary overflow-y-auto safe-bottom md:static md:inset-auto md:z-auto md:max-h-none md:rounded-none md:border-t-0 md:border-l md:w-80 md:flex-shrink-0">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
                 <div>
                   <div className="text-sm font-medium">{format(selectedDate, 'EEEE')}</div>
@@ -343,7 +354,8 @@ export default function CalendarPage() {
                   }}
                   className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary transition"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <X className="h-4 w-4 md:hidden" />
+                  <ChevronRight className="h-4 w-4 hidden md:block" />
                 </button>
               </div>
 
@@ -404,6 +416,7 @@ export default function CalendarPage() {
                 )}
               </div>
             </div>
+            </>
           )}
         </div>
       </div>
