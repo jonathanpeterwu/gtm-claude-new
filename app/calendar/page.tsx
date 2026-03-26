@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/common/Sidebar';
@@ -53,7 +53,6 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [selectedDayEvents, setSelectedDayEvents] = useState<CalendarEvent[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const setSidebarOpen = useInboxStore((s) => s.setSidebarOpen);
 
@@ -116,12 +115,7 @@ export default function CalendarPage() {
   const goToToday = () => setCurrentDate(new Date());
 
   const handleDayClick = (day: Date) => {
-    const dayEvents = events.filter((e) => {
-      const eventDate = parseISO(e.start);
-      return isSameDay(eventDate, day) || (e.isAllDay && isSameDay(parseISO(e.start), day));
-    });
     setSelectedDate(day);
-    setSelectedDayEvents(dayEvents);
   };
 
   const handleCreateEvent = () => {
@@ -136,7 +130,6 @@ export default function CalendarPage() {
 
   const handleEventSaved = () => {
     fetchEvents();
-    setSelectedDayEvents(null);
   };
 
   if (status === 'loading') {
@@ -149,7 +142,6 @@ export default function CalendarPage() {
 
   if (!session) return null;
 
-  // Build calendar grid
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(viewMode === 'month' ? monthStart : currentDate);
@@ -157,14 +149,26 @@ export default function CalendarPage() {
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const getEventsForDay = (day: Date) =>
-    events.filter((e) => {
+  // Pre-compute date→events map once, instead of O(days*events) per render
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    for (const e of events) {
       try {
-        return isSameDay(parseISO(e.start), day);
-      } catch {
-        return false;
-      }
-    });
+        const key = format(parseISO(e.start), 'yyyy-MM-dd');
+        const list = map.get(key);
+        if (list) list.push(e);
+        else map.set(key, [e]);
+      } catch { /* skip malformed dates */ }
+    }
+    return map;
+  }, [events]);
+
+  const getEventsForDay = (day: Date) => eventsByDate.get(format(day, 'yyyy-MM-dd')) || [];
+
+  const selectedDayEvents = useMemo(
+    () => (selectedDate ? getEventsForDay(selectedDate) : null),
+    [selectedDate, eventsByDate]
+  );
 
   return (
     <div className="flex h-screen bg-bg-primary">
@@ -340,7 +344,7 @@ export default function CalendarPage() {
           {selectedDayEvents !== null && selectedDate && (
             <>
               {/* Mobile backdrop */}
-              <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => { setSelectedDayEvents(null); setSelectedDate(null); }} />
+              <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => { setSelectedDate(null); }} />
               <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl border-t border-border-subtle bg-bg-secondary overflow-y-auto safe-bottom md:static md:inset-auto md:z-auto md:max-h-none md:rounded-none md:border-t-0 md:border-l md:w-80 md:flex-shrink-0">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
                 <div>
@@ -349,7 +353,6 @@ export default function CalendarPage() {
                 </div>
                 <button
                   onClick={() => {
-                    setSelectedDayEvents(null);
                     setSelectedDate(null);
                   }}
                   className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary transition"

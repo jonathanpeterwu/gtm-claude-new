@@ -14,12 +14,21 @@ import { useLinkedAccountsSync, withAccount } from '@/lib/hooks/useLinkedAccount
 import { Thread, GTMTask } from '@/types';
 import { UpcomingMeetings } from '@/components/calendar/UpcomingMeetings';
 import { InboxSuggestions } from '@/components/inbox/InboxSuggestions';
+import { ThreadListSkeleton } from '@/components/inbox/ThreadListSkeleton';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
+function gmailAction(action: string, payload: Record<string, unknown>) {
+  return fetch('/api/gmail', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...payload }),
+  });
+}
+
 // Fire-and-forget background task extraction — only sends summaries, not full threads
-function backgroundExtractTasks(threads: Thread[], existingTasks: GTMTask[], addTask: (task: GTMTask) => void) {
-  const processedThreadIds = new Set(existingTasks.map((t) => t.threadId));
+function backgroundExtractTasks(threads: Thread[], addTask: (task: GTMTask) => void) {
+  const processedThreadIds = new Set(useInboxStore.getState().tasks.map((t) => t.threadId));
   const newThreads = threads.filter((t) => !processedThreadIds.has(t.id));
   if (newThreads.length === 0) return;
 
@@ -150,7 +159,7 @@ export default function InboxPage() {
           .catch(() => {});
 
         // Background: extract tasks
-        backgroundExtractTasks(data.threads, tasks, addTask);
+        backgroundExtractTasks(data.threads, addTask);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
@@ -168,11 +177,7 @@ export default function InboxPage() {
   useEffect(() => {
     if (!selectedThread || !selectedThread.isUnread) return;
     optimisticMarkRead(selectedThread.id);
-    fetch('/api/gmail', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'markRead', threadId: selectedThread.id, account: activeAccountEmail }),
-    }).catch(() => {});
+    gmailAction('markRead', { threadId: selectedThread.id, account: activeAccountEmail }).catch(() => {});
   }, [selectedThreadId]);
 
   // Optimistic archive — instant UI, background API
@@ -182,12 +187,7 @@ export default function InboxPage() {
     optimisticArchive(archivedId);
     toast.success('Archived');
 
-    // Fire API in background
-    fetch('/api/gmail', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'archive', threadId: archivedId, account: activeAccountEmail }),
-    }).catch(() => {
+    gmailAction('archive', { threadId: archivedId, account: activeAccountEmail }).catch(() => {
       toast.error('Failed to archive on server');
     });
   }, [selectedThreadId, optimisticArchive, activeAccountEmail]);
@@ -199,11 +199,7 @@ export default function InboxPage() {
     optimisticStar(selectedThread.id, newStarred);
     toast.success(newStarred ? 'Starred' : 'Unstarred');
 
-    fetch('/api/gmail', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'star', threadId: selectedThread.id, starred: newStarred, account: activeAccountEmail }),
-    }).catch(() => {
+    gmailAction('star', { threadId: selectedThread.id, starred: newStarred, account: activeAccountEmail }).catch(() => {
       // Revert on failure
       optimisticStar(selectedThread.id, !newStarred);
       toast.error('Failed to update star');
@@ -241,16 +237,7 @@ export default function InboxPage() {
           <div className="h-14 border-b border-border-subtle px-4 flex items-center">
             <div className="h-8 w-full max-w-xs rounded-lg bg-bg-tertiary animate-pulse" />
           </div>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-start gap-3 border-b border-border-subtle px-4 py-3 animate-pulse">
-              <div className="mt-2 h-2 w-2 rounded-full bg-bg-tertiary flex-shrink-0" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex justify-between"><div className="h-3.5 w-28 rounded bg-bg-tertiary" /><div className="h-3 w-12 rounded bg-bg-tertiary" /></div>
-                <div className="h-3.5 w-3/4 rounded bg-bg-tertiary" />
-                <div className="h-3 w-1/2 rounded bg-bg-tertiary" />
-              </div>
-            </div>
-          ))}
+          <ThreadListSkeleton />
         </div>
       </div>
     );

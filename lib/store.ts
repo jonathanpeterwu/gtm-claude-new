@@ -140,16 +140,19 @@ export const useInboxStore = create<InboxState>((set, get) => ({
 
   // Optimistic UI actions — update store instantly, return next thread ID
   optimisticArchive: (threadId) => {
-    const { threads, selectedIndex, activeFilter, categories } = get();
+    const { threads, selectedIndex, activeFilter, categories, threadAccountMap } = get();
     const filtered = activeFilter === 'all' ? threads : threads.filter((t) => categories.get(t.id) === activeFilter);
     const currentIndex = filtered.findIndex((t) => t.id === threadId);
     const remaining = filtered.filter((t) => t.id !== threadId);
-    // Select next thread (same index, or previous if at end)
     const nextIndex = Math.min(currentIndex, remaining.length - 1);
     const nextThreadId = nextIndex >= 0 ? remaining[nextIndex]?.id || null : null;
 
+    const cleanedMap = new Map(threadAccountMap);
+    cleanedMap.delete(threadId);
+
     set((state) => ({
       threads: state.threads.filter((t) => t.id !== threadId),
+      threadAccountMap: cleanedMap,
       selectedThreadId: nextThreadId,
       selectedIndex: Math.max(0, nextIndex),
     }));
@@ -166,13 +169,17 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   },
 
   optimisticMarkRead: (threadId) => {
-    set((state) => ({
-      threads: state.threads.map((t) =>
-        t.id === threadId
-          ? { ...t, isUnread: false, messages: t.messages.map((m) => ({ ...m, isUnread: false })) }
-          : t
-      ),
-    }));
+    set((state) => {
+      const thread = state.threads.find((t) => t.id === threadId);
+      if (!thread || !thread.isUnread) return state;
+      return {
+        threads: state.threads.map((t) =>
+          t.id === threadId
+            ? { ...t, isUnread: false, messages: t.messages.map((m) => ({ ...m, isUnread: false })) }
+            : t
+        ),
+      };
+    });
   },
 }));
 
