@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useInboxStore } from '@/lib/store';
@@ -76,8 +76,13 @@ export default function InboxPage() {
 
   useLinkedAccountsSync();
 
-  const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
+
+  // Derive selected thread from store — no redundant local state
+  const selectedThread = useMemo(
+    () => (selectedThreadId ? threads.find((t) => t.id === selectedThreadId) || null : null),
+    [selectedThreadId, threads]
+  );
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
@@ -159,33 +164,22 @@ export default function InboxPage() {
     if (session) fetchThreads();
   }, [session, fetchThreads]);
 
-  // Sync selected thread from store (memoized lookup)
+  // Auto-mark as read when thread is selected
   useEffect(() => {
-    if (!selectedThreadId) {
-      setSelectedThread(null);
-      return;
-    }
-    const found = threads.find((t) => t.id === selectedThreadId);
-    if (found) {
-      setSelectedThread(found);
-      // Auto-mark as read in background
-      if (found.isUnread) {
-        optimisticMarkRead(found.id);
-        fetch('/api/gmail', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'markRead', threadId: found.id, account: activeAccountEmail }),
-        }).catch(() => {});
-      }
-    }
-  }, [selectedThreadId, threads]);
+    if (!selectedThread || !selectedThread.isUnread) return;
+    optimisticMarkRead(selectedThread.id);
+    fetch('/api/gmail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'markRead', threadId: selectedThread.id, account: activeAccountEmail }),
+    }).catch(() => {});
+  }, [selectedThreadId]);
 
   // Optimistic archive — instant UI, background API
   const handleArchive = useCallback(async () => {
     if (!selectedThreadId) return;
     const archivedId = selectedThreadId;
-    const nextId = optimisticArchive(archivedId);
-    setSelectedThread(nextId ? threads.find((t) => t.id === nextId) || null : null);
+    optimisticArchive(archivedId);
     toast.success('Archived');
 
     // Fire API in background
@@ -196,7 +190,7 @@ export default function InboxPage() {
     }).catch(() => {
       toast.error('Failed to archive on server');
     });
-  }, [selectedThreadId, threads, optimisticArchive, activeAccountEmail]);
+  }, [selectedThreadId, optimisticArchive, activeAccountEmail]);
 
   // Optimistic star — instant UI, background API
   const handleStar = useCallback(async () => {
@@ -218,13 +212,12 @@ export default function InboxPage() {
 
   const handleBack = useCallback(() => {
     selectThread(null);
-    setSelectedThread(null);
   }, [selectThread]);
 
   useKeyboardShortcuts({
     onArchive: handleArchive,
     onStar: handleStar,
-    onOpen: () => selectedThreadId && setSelectedThread(threads.find((t) => t.id === selectedThreadId) || null),
+    onOpen: () => {},
     onBack: handleBack,
     onCompose: () => setComposing(true),
     onReply: () => {},
@@ -233,8 +226,32 @@ export default function InboxPage() {
 
   if (status === 'loading') {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg-primary">
-        <div className="animate-pulse-subtle text-accent-blue">Loading...</div>
+      <div className="flex h-screen bg-bg-primary">
+        {/* Skeleton sidebar */}
+        <div className="hidden md:flex w-14 flex-col border-r border-border-subtle bg-bg-secondary">
+          <div className="p-3 py-4"><div className="h-5 w-5 rounded bg-bg-tertiary animate-pulse" /></div>
+          <div className="space-y-2 px-2 mt-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-8 rounded-lg bg-bg-tertiary animate-pulse" />
+            ))}
+          </div>
+        </div>
+        {/* Skeleton thread list */}
+        <div className="w-full md:w-96 border-r border-border-subtle">
+          <div className="h-14 border-b border-border-subtle px-4 flex items-center">
+            <div className="h-8 w-full max-w-xs rounded-lg bg-bg-tertiary animate-pulse" />
+          </div>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-3 border-b border-border-subtle px-4 py-3 animate-pulse">
+              <div className="mt-2 h-2 w-2 rounded-full bg-bg-tertiary flex-shrink-0" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex justify-between"><div className="h-3.5 w-28 rounded bg-bg-tertiary" /><div className="h-3 w-12 rounded bg-bg-tertiary" /></div>
+                <div className="h-3.5 w-3/4 rounded bg-bg-tertiary" />
+                <div className="h-3 w-1/2 rounded bg-bg-tertiary" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

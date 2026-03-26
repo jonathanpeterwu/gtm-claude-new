@@ -4,7 +4,7 @@ import { useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useInboxStore, useFilteredThreads } from '@/lib/store';
 import { ThreadRow } from './ThreadRow';
-import { Loader2, Inbox } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 
 interface ThreadListProps {
   onSelectThread: (threadId: string) => void;
@@ -44,8 +44,20 @@ export function ThreadList({ onSelectThread }: ThreadListProps) {
 
   if (isLoading && filteredThreads.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-accent-blue" />
+      <div className="h-full overflow-hidden">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-3 border-b border-border-subtle px-4 py-3 animate-pulse">
+            <div className="mt-2 h-2 w-2 rounded-full bg-bg-tertiary flex-shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="h-3.5 w-28 rounded bg-bg-tertiary" />
+                <div className="h-3 w-12 rounded bg-bg-tertiary" />
+              </div>
+              <div className="h-3.5 w-3/4 rounded bg-bg-tertiary" />
+              <div className="h-3 w-1/2 rounded bg-bg-tertiary" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

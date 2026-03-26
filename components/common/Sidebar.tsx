@@ -17,7 +17,6 @@ import {
   Moon,
   PenSquare,
   X,
-  Menu,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -113,8 +112,7 @@ export function Sidebar() {
             )}
           >
             <PenSquare className="h-4 w-4" />
-            {(sidebarOpen || true) && <span className="md:hidden">Compose</span>}
-            {sidebarOpen && <span className="hidden md:inline">Compose</span>}
+            {sidebarOpen && <span>Compose</span>}
           </button>
         </div>
 
@@ -136,23 +134,17 @@ export function Sidebar() {
                 )}
               >
                 <Icon className="h-4 w-4 flex-shrink-0" />
-                {/* Always show label on mobile drawer, conditionally on desktop */}
-                <span className="md:hidden">{label}</span>
-                {sidebarOpen && <span className="hidden md:inline">{label}</span>}
+                {sidebarOpen && <span>{label}</span>}
               </Link>
             );
           })}
 
-          {/* Categories — show in mobile drawer always, desktop only when expanded */}
-          <div className={clsx(!sidebarOpen && 'hidden md:hidden', sidebarOpen && 'md:block')}>
-            <div className="block md:hidden mt-4 mb-2 px-3 text-2xs font-semibold uppercase tracking-wider text-text-muted">
+          {/* Categories — visible in mobile drawer and when desktop sidebar is expanded */}
+          {sidebarOpen && (
+          <div>
+            <div className="mt-4 mb-2 px-3 text-2xs font-semibold uppercase tracking-wider text-text-muted">
               Categories
             </div>
-            {sidebarOpen && (
-              <div className="hidden md:block mt-4 mb-2 px-3 text-2xs font-semibold uppercase tracking-wider text-text-muted">
-                Categories
-              </div>
-            )}
             {CATEGORY_FILTERS.map((cat) => {
               const config = CATEGORY_CONFIG[cat];
               return (
@@ -175,6 +167,7 @@ export function Sidebar() {
               );
             })}
           </div>
+          )}
         </nav>
 
         {/* Footer */}
@@ -187,8 +180,7 @@ export function Sidebar() {
             )}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="md:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-            {sidebarOpen && <span className="hidden md:inline">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>}
+            {sidebarOpen && <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>}
           </button>
         </div>
       </aside>
