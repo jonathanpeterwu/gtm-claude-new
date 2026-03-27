@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 import { useInboxStore } from '@/lib/store';
 import { InboxSuggestion } from '@/types';
 import {
@@ -28,13 +28,19 @@ interface InboxSuggestionsProps {
   onSelectThread: (threadId: string) => void;
 }
 
-export function InboxSuggestions({ onSelectThread }: InboxSuggestionsProps) {
+export const InboxSuggestions = memo(function InboxSuggestions({ onSelectThread }: InboxSuggestionsProps) {
   const threads = useInboxStore((s) => s.threads);
   const suggestions = useInboxStore((s) => s.suggestions);
   const setSuggestions = useInboxStore((s) => s.setSuggestions);
   const categories = useInboxStore((s) => s.categories);
   const [expanded, setExpanded] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // O(1) thread lookup instead of O(n) per suggestion
+  const threadMap = useMemo(
+    () => new Map(threads.map((t) => [t.id, t])),
+    [threads]
+  );
 
   useEffect(() => {
     if (threads.length === 0 || suggestions.length > 0) return;
@@ -74,7 +80,6 @@ export function InboxSuggestions({ onSelectThread }: InboxSuggestionsProps) {
       }
     };
 
-    // Delay to let categorization finish first
     const timeout = setTimeout(fetchSuggestions, 3000);
     return () => clearTimeout(timeout);
   }, [threads, suggestions.length, categories, setSuggestions]);
@@ -105,7 +110,7 @@ export function InboxSuggestions({ onSelectThread }: InboxSuggestionsProps) {
       {expanded && suggestions.length > 0 && (
         <div className="px-3 pb-3 space-y-1.5">
           {suggestions.map((suggestion) => {
-            const thread = threads.find((t) => t.id === suggestion.threadId);
+            const thread = threadMap.get(suggestion.threadId);
             if (!thread) return null;
             const config = SUGGESTION_CONFIG[suggestion.type];
             const Icon = config.icon;
@@ -136,4 +141,4 @@ export function InboxSuggestions({ onSelectThread }: InboxSuggestionsProps) {
       )}
     </div>
   );
-}
+});

@@ -127,29 +127,18 @@ export const authOptions: AuthOptions = {
             token.error = 'RefreshAccessTokenError';
           }
         } else if (typeof token.expiresAt === 'number' && Date.now() >= token.expiresAt * 1000 && token.refreshToken) {
-          // Fallback: refresh using legacy fields
+          // Fallback: refresh using legacy fields via shared helper
           try {
-            const params = new URLSearchParams({
-              client_id: process.env.GOOGLE_CLIENT_ID!,
-              client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-              grant_type: 'refresh_token',
-              refresh_token: token.refreshToken as string,
+            const refreshed = await refreshAccountToken({
+              accessToken: token.accessToken as string,
+              refreshToken: token.refreshToken as string,
+              expiresAt: token.expiresAt as number,
+              name: (token.name as string) || '',
+              email: (token.email as string) || '',
             });
-
-            const res = await fetch('https://oauth2.googleapis.com/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: params.toString(),
-            });
-
-            const refreshed = await res.json();
-            if (!res.ok) throw refreshed;
-
-            token.accessToken = refreshed.access_token;
-            token.expiresAt = Math.floor(Date.now() / 1000) + refreshed.expires_in;
-            if (refreshed.refresh_token) {
-              token.refreshToken = refreshed.refresh_token;
-            }
+            token.accessToken = refreshed.accessToken;
+            token.expiresAt = refreshed.expiresAt;
+            token.refreshToken = refreshed.refreshToken;
           } catch (error) {
             console.error('Error refreshing access token:', error);
             token.error = 'RefreshAccessTokenError';

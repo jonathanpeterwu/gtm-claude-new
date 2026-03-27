@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { Thread, DraftTone, GTMTask } from '@/types';
 import { Brain, FileText, CheckSquare, Wand2, Loader2, Search } from 'lucide-react';
 import clsx from 'clsx';
@@ -22,7 +22,7 @@ const TONES: { value: DraftTone; label: string }[] = [
   { value: 'detailed', label: 'Detailed' },
 ];
 
-export function AIActions({ thread, userEmail, onDraftGenerated, summary, onSummarize }: AIActionsProps) {
+export const AIActions = memo(function AIActions({ thread, userEmail, onDraftGenerated, summary, onSummarize }: AIActionsProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [selectedTone, setSelectedTone] = useState<DraftTone>('professional');
   const [draft, setDraft] = useState<string | null>(null);
@@ -221,4 +221,4 @@ export function AIActions({ thread, userEmail, onDraftGenerated, summary, onSumm
       )}
     </div>
   );
-}
+});

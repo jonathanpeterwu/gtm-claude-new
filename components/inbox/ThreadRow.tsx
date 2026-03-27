@@ -1,7 +1,8 @@
 'use client';
 
-import { Thread, CATEGORY_CONFIG } from '@/types';
-import { useInboxStore } from '@/lib/store';
+import { memo } from 'react';
+import { Thread, CATEGORY_CONFIG, EmailCategory } from '@/types';
+import { useThreadCategory } from '@/lib/store';
 import { Star, Paperclip } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';
@@ -10,19 +11,21 @@ interface ThreadRowProps {
   thread: Thread;
   isSelected: boolean;
   onClick: () => void;
+  accountColor?: string;
+  showAccountDot?: boolean;
 }
 
-export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
-  const categories = useInboxStore((s) => s.categories);
-  const inboxMode = useInboxStore((s) => s.inboxMode);
-  const threadAccountMap = useInboxStore((s) => s.threadAccountMap);
-  const accounts = useInboxStore((s) => s.accounts);
-  const category = categories.get(thread.id) || thread.category;
+export const ThreadRow = memo(function ThreadRow({
+  thread,
+  isSelected,
+  onClick,
+  accountColor,
+  showAccountDot,
+}: ThreadRowProps) {
+  const category = useThreadCategory(thread.id) || thread.category;
   const catConfig = category ? CATEGORY_CONFIG[category] : null;
   const lastMsg = thread.messages[thread.messages.length - 1];
   const fromName = lastMsg?.from.name || lastMsg?.from.email?.split('@')[0] || 'Unknown';
-  const accountEmail = threadAccountMap.get(thread.id);
-  const account = accounts.find((a) => a.email === accountEmail);
 
   return (
     <div
@@ -35,11 +38,10 @@ export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
     >
       {/* Unread indicator + account dot */}
       <div className="mt-2 flex-shrink-0">
-        {inboxMode === 'blended' && account ? (
+        {showAccountDot && accountColor ? (
           <div
             className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: account.color }}
-            title={account.email}
+            style={{ backgroundColor: accountColor }}
           />
         ) : thread.isUnread ? (
           <div className="h-2 w-2 rounded-full bg-accent-blue" />
@@ -85,4 +87,4 @@ export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
       </div>
     </div>
   );
-}
+});

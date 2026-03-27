@@ -3,7 +3,7 @@
 import { Email } from '@/types';
 import { format } from 'date-fns';
 import { Paperclip, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import clsx from 'clsx';
 import DOMPurify from 'dompurify';
 
@@ -76,7 +76,7 @@ function linkifyText(text: string): string {
   return result;
 }
 
-export function MessageBubble({ message, isLast }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, isLast }: MessageBubbleProps) {
   const [expanded, setExpanded] = useState(isLast);
   const [showHtml, setShowHtml] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -295,4 +295,4 @@ export function MessageBubble({ message, isLast }: MessageBubbleProps) {
       )}
     </div>
   );
-}
+});

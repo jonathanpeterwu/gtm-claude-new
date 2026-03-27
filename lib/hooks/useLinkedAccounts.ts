@@ -10,8 +10,6 @@ import { useInboxStore } from '@/lib/store';
  */
 export function useLinkedAccountsSync() {
   const { data: session } = useSession();
-  const addAccount = useInboxStore((s) => s.addAccount);
-  const accounts = useInboxStore((s) => s.accounts);
 
   useEffect(() => {
     const linked = (session as any)?.linkedAccounts as
@@ -20,27 +18,18 @@ export function useLinkedAccountsSync() {
 
     if (!linked || linked.length === 0) return;
 
-    // Add any accounts from the session that aren't already in the store
+    const { accounts, addAccount } = useInboxStore.getState();
     for (const acc of linked) {
-      const exists = accounts.some((a) => a.email === acc.email);
-      if (!exists) {
+      if (!accounts.some((a) => a.email === acc.email)) {
         addAccount({
           email: acc.email,
           name: acc.name,
           image: acc.image,
-          color: '', // Will be auto-assigned by store
+          color: '',
         });
       }
     }
-  }, [session, accounts, addAccount]);
-}
-
-/**
- * Returns the active account email for use in API calls.
- * Returns null if using the primary/default session account.
- */
-export function useActiveAccountEmail(): string | null {
-  return useInboxStore((s) => s.activeAccountEmail);
+  }, [session]);
 }
 
 /**
