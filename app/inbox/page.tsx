@@ -180,17 +180,39 @@ export default function InboxPage() {
     gmailAction('markRead', { threadId: selectedThread.id, account: activeAccountEmail }).catch(() => {});
   }, [selectedThreadId]);
 
-  // Optimistic archive — instant UI, background API
+  // Optimistic archive with undo
   const handleArchive = useCallback(async () => {
     if (!selectedThreadId) return;
     const archivedId = selectedThreadId;
+    const archivedThread = threads.find((t) => t.id === archivedId);
     optimisticArchive(archivedId);
-    toast.success('Archived');
+
+    const toastId = toast.success(
+      (t) => (
+        <span className="flex items-center gap-2 text-sm">
+          Archived
+          <button
+            onClick={() => {
+              if (archivedThread) {
+                useInboxStore.getState().setThreads([archivedThread, ...useInboxStore.getState().threads]);
+                useInboxStore.getState().selectThread(archivedId);
+              }
+              toast.dismiss(t.id);
+            }}
+            className="font-medium text-accent-blue hover:underline"
+          >
+            Undo
+          </button>
+        </span>
+      ),
+      { duration: 4000 }
+    );
 
     gmailAction('archive', { threadId: archivedId, account: activeAccountEmail }).catch(() => {
+      toast.dismiss(toastId);
       toast.error('Failed to archive on server');
     });
-  }, [selectedThreadId, optimisticArchive, activeAccountEmail]);
+  }, [selectedThreadId, threads, optimisticArchive, activeAccountEmail]);
 
   // Optimistic star — instant UI, background API
   const handleStar = useCallback(async () => {

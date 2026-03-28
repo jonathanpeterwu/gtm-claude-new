@@ -25,6 +25,7 @@ export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
           onClick={() => setSidebarOpen(true)}
           className="rounded-lg p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition md:hidden"
           title="Menu"
+          aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -37,6 +38,7 @@ export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
             disabled={isLoading}
             className="rounded-lg p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition disabled:opacity-50"
             title="Refresh"
+            aria-label="Refresh emails"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -46,6 +48,7 @@ export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
             onClick={() => setShowShortcuts(true)}
             className="hidden md:block rounded-lg p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition"
             title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
           >
             <Keyboard className="h-4 w-4" />
           </button>

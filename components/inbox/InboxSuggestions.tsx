@@ -127,8 +127,10 @@ export const InboxSuggestions = memo(function InboxSuggestions({ onSelectThread 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className={clsx('text-2xs font-medium', config.color)}>{config.label}</span>
-                    <span className="text-2xs text-text-muted">
-                      {'*'.repeat(suggestion.priority)}
+                    <span className="flex items-center gap-0.5" title={`Priority ${suggestion.priority}/5`}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i} className={clsx('inline-block h-1 w-1 rounded-full', i < suggestion.priority ? 'bg-accent-purple' : 'bg-bg-tertiary')} />
+                      ))}
                     </span>
                   </div>
                   <p className="text-xs text-text-primary truncate mt-0.5">{thread.subject}</p>
