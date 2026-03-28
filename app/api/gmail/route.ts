@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAccessTokenForAccount } from '@/lib/account-token';
 import { listThreads, getThread, archiveThread, starThread, markRead, markUnread, sendReply, createDraft, searchEmails } from '@/lib/gmail/client';
 
-async function getAccessToken(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
-  return (session as any)?.accessToken || null;
-}
-
 export async function GET(req: NextRequest) {
-  const token = await getAccessToken();
+  const { searchParams } = new URL(req.url);
+  const account = searchParams.get('account');
+  const token = await getAccessTokenForAccount(req, account);
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { searchParams } = new URL(req.url);
   const action = searchParams.get('action');
 
   try {
@@ -46,10 +41,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = await getAccessToken();
+  const body = await req.json();
+  const token = await getAccessTokenForAccount(req, body.account);
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json();
   const { action } = body;
 
   try {

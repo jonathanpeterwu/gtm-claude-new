@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { useInboxStore } from '@/lib/store';
 import { Sidebar } from '@/components/common/Sidebar';
 import { GTMTask } from '@/types';
-import { CheckCircle, Circle, Clock, ArrowUpCircle, MinusCircle } from 'lucide-react';
+import { CheckCircle, Circle, Clock, ArrowUpCircle, MinusCircle, Menu } from 'lucide-react';
 import clsx from 'clsx';
 
 const STATUS_CONFIG = {
@@ -27,6 +27,7 @@ export default function TasksPage() {
   const router = useRouter();
   const tasks = useInboxStore((s) => s.tasks);
   const updateTask = useInboxStore((s) => s.updateTask);
+  const setSidebarOpen = useInboxStore((s) => s.setSidebarOpen);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
@@ -46,12 +47,17 @@ export default function TasksPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col min-w-0">
-        <div className="border-b border-border-subtle bg-bg-secondary px-6 py-4">
-          <h1 className="text-lg font-semibold">GTM Tasks</h1>
-          <p className="text-sm text-text-muted mt-0.5">Tasks extracted from your email threads</p>
+        <div className="border-b border-border-subtle bg-bg-secondary px-4 md:px-6 py-3 md:py-4 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="md:hidden rounded-lg p-1.5 text-text-secondary hover:bg-bg-hover">
+            <Menu className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-lg font-semibold">GTM Tasks</h1>
+            <p className="text-sm text-text-muted mt-0.5 hidden sm:block">Tasks extracted from your email threads</p>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-x-auto p-6">
+        <div className="flex-1 overflow-x-auto p-3 md:p-6">
           {tasks.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-text-muted">
               <CheckCircle className="mb-3 h-10 w-10" />
@@ -59,12 +65,12 @@ export default function TasksPage() {
               <p className="mt-1 text-xs">Open an email and use AI to extract tasks</p>
             </div>
           ) : (
-            <div className="flex gap-4 h-full">
+            <div className="flex md:flex-row flex-col gap-4 h-full">
               {columns.map(({ status: colStatus, tasks: colTasks }) => {
                 const config = STATUS_CONFIG[colStatus];
                 const Icon = config.icon;
                 return (
-                  <div key={colStatus} className="w-72 flex-shrink-0">
+                  <div key={colStatus} className="md:w-72 md:flex-shrink-0 w-full">
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <Icon className={clsx('h-4 w-4', config.color)} />
                       <span className="text-sm font-medium">{config.label}</span>

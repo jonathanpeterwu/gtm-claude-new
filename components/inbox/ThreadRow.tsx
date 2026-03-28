@@ -1,7 +1,8 @@
 'use client';
 
-import { Thread, CATEGORY_CONFIG } from '@/types';
-import { useInboxStore } from '@/lib/store';
+import { memo } from 'react';
+import { Thread, CATEGORY_CONFIG, EmailCategory } from '@/types';
+import { useThreadCategory } from '@/lib/store';
 import { Star, Paperclip } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';
@@ -10,11 +11,18 @@ interface ThreadRowProps {
   thread: Thread;
   isSelected: boolean;
   onClick: () => void;
+  accountColor?: string;
+  showAccountDot?: boolean;
 }
 
-export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
-  const categories = useInboxStore((s) => s.categories);
-  const category = categories.get(thread.id) || thread.category;
+export const ThreadRow = memo(function ThreadRow({
+  thread,
+  isSelected,
+  onClick,
+  accountColor,
+  showAccountDot,
+}: ThreadRowProps) {
+  const category = useThreadCategory(thread.id) || thread.category;
   const catConfig = category ? CATEGORY_CONFIG[category] : null;
   const lastMsg = thread.messages[thread.messages.length - 1];
   const fromName = lastMsg?.from.name || lastMsg?.from.email?.split('@')[0] || 'Unknown';
@@ -28,9 +36,14 @@ export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
         thread.isUnread && 'bg-bg-hover/50'
       )}
     >
-      {/* Unread indicator */}
+      {/* Unread indicator + account dot */}
       <div className="mt-2 flex-shrink-0">
-        {thread.isUnread ? (
+        {showAccountDot && accountColor ? (
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: accountColor }}
+          />
+        ) : thread.isUnread ? (
           <div className="h-2 w-2 rounded-full bg-accent-blue" />
         ) : (
           <div className="h-2 w-2" />
@@ -74,4 +87,4 @@ export function ThreadRow({ thread, isSelected, onClick }: ThreadRowProps) {
       </div>
     </div>
   );
-}
+});

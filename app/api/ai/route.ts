@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { categorizeThreadsBatch, generateDraft, summarizeThread, researchAndDraft, extractTasks, improveWriting } from '@/lib/ai/claude';
+import { categorizeThreadsBatch, generateDraft, summarizeThread, researchAndDraft, extractTasks, improveWriting, generateInboxSuggestions } from '@/lib/ai/claude';
 import { Thread } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -42,6 +42,11 @@ export async function POST(req: NextRequest) {
     if (action === 'improve') {
       const improved = await improveWriting(body.text, body.instruction);
       return NextResponse.json({ text: improved });
+    }
+
+    if (action === 'inbox-suggestions') {
+      const suggestions = await generateInboxSuggestions(body.threads);
+      return NextResponse.json({ suggestions });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
