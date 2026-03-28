@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { useInboxStore } from '@/lib/store';
 
 export function SearchBar({ onSearch }: { onSearch: (query: string) => void }) {
   const searchQuery = useInboxStore((s) => s.searchQuery);
   const setSearchQuery = useInboxStore((s) => s.setSearchQuery);
   const [focused, setFocused] = useState(false);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -20,10 +21,15 @@ export function SearchBar({ onSearch }: { onSearch: (query: string) => void }) {
 
   const handleChange = useCallback((value: string) => {
     setSearchQuery(value);
-    // Debounce: auto-search after 400ms of inactivity
     clearTimeout(debounceRef.current);
     if (value.length >= 3 || value.length === 0) {
-      debounceRef.current = setTimeout(() => onSearch(value), 400);
+      setSearching(true);
+      debounceRef.current = setTimeout(() => {
+        onSearch(value);
+        setSearching(false);
+      }, 400);
+    } else {
+      setSearching(false);
     }
   }, [setSearchQuery, onSearch]);
 
@@ -53,7 +59,11 @@ export function SearchBar({ onSearch }: { onSearch: (query: string) => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="relative flex-1 max-w-xl">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+      {searching ? (
+        <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent-blue animate-spin" />
+      ) : (
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+      )}
       <input
         ref={inputRef}
         type="text"
@@ -68,6 +78,7 @@ export function SearchBar({ onSearch }: { onSearch: (query: string) => void }) {
         <button
           type="button"
           onClick={handleClear}
+          aria-label="Clear search"
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-muted hover:text-text-primary"
         >
           <X className="h-3.5 w-3.5" />

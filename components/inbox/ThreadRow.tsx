@@ -66,7 +66,7 @@ export const ThreadRow = memo(function ThreadRow({
         </div>
 
         <div className="flex items-center gap-2 mt-0.5">
-          <span className={clsx('truncate text-sm', thread.isUnread ? 'text-text-primary' : 'text-text-secondary')}>
+          <span className={clsx('truncate text-sm', thread.isUnread ? 'text-text-primary' : 'text-text-secondary')} title={thread.subject}>
             {thread.subject}
           </span>
           {thread.messages.length > 1 && (
