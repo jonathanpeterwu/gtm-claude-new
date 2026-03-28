@@ -26,7 +26,6 @@ import { AccountSwitcher } from './AccountSwitcher';
 const NAV_ITEMS = [
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
   { href: '/inbox?filter=starred', icon: Star, label: 'Starred' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -50,6 +49,8 @@ export function Sidebar() {
   const activeFilter = useInboxStore((s) => s.activeFilter);
   const setActiveFilter = useInboxStore((s) => s.setActiveFilter);
   const setComposing = useInboxStore((s) => s.setComposing);
+  const calendarOpen = useInboxStore((s) => s.calendarOpen);
+  const setCalendarOpen = useInboxStore((s) => s.setCalendarOpen);
   const { theme, toggleTheme } = useThemeStore();
 
   return (
@@ -140,6 +141,21 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Calendar drawer toggle */}
+          <button
+            onClick={() => { setCalendarOpen(!calendarOpen); if (window.innerWidth < 768) setSidebarOpen(false); }}
+            className={clsx(
+              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition w-full',
+              calendarOpen
+                ? 'bg-bg-selected text-text-primary'
+                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
+              !sidebarOpen && 'md:justify-center md:px-2'
+            )}
+          >
+            <Calendar className="h-4 w-4 flex-shrink-0" />
+            {sidebarOpen && <span>Calendar</span>}
+          </button>
 
           {/* Categories — visible in mobile drawer and when desktop sidebar is expanded */}
           {sidebarOpen && (

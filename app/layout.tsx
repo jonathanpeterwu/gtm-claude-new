@@ -4,6 +4,7 @@ import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
+import { CalendarDrawer } from '@/components/calendar/CalendarDrawer';
 
 function ThemeInitializer() {
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeInitializer />
           <ServiceWorkerRegistrar />
           {children}
+          <CalendarDrawer />
           <Toaster
             position="bottom-center"
             toastOptions={{

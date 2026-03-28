@@ -12,7 +12,6 @@ import { ComposeModal } from '@/components/compose/ComposeModal';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboard';
 import { useLinkedAccountsSync, withAccount } from '@/lib/hooks/useLinkedAccounts';
 import { Thread, GTMTask } from '@/types';
-import { UpcomingMeetings } from '@/components/calendar/UpcomingMeetings';
 import { InboxSuggestions } from '@/components/inbox/InboxSuggestions';
 import { ThreadListSkeleton } from '@/components/inbox/ThreadListSkeleton';
 import toast from 'react-hot-toast';
@@ -310,7 +309,6 @@ export default function InboxPage() {
               />
             ) : (
               <div className="flex h-full flex-col">
-                <UpcomingMeetings />
                 <div className="flex flex-1 flex-col items-center justify-center text-text-muted">
                   <div className="text-4xl mb-3">
                     <span className="text-accent-blue">S</span>

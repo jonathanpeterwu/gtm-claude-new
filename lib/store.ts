@@ -14,6 +14,7 @@ interface InboxState {
   categories: Map<string, EmailCategory>;
   tasks: GTMTask[];
   sidebarOpen: boolean;
+  calendarOpen: boolean;
   composing: boolean;
   aiDrafting: boolean;
 
@@ -38,6 +39,7 @@ interface InboxState {
   updateTask: (id: string, updates: Partial<GTMTask>) => void;
   removeTask: (id: string) => void;
   setSidebarOpen: (open: boolean) => void;
+  setCalendarOpen: (open: boolean) => void;
   setComposing: (composing: boolean) => void;
   setAiDrafting: (aiDrafting: boolean) => void;
 
@@ -66,6 +68,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   categories: new Map(),
   tasks: [],
   sidebarOpen: true,
+  calendarOpen: false,
   composing: false,
   aiDrafting: false,
 
@@ -110,6 +113,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     })),
   removeTask: (id) => set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) })),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setCalendarOpen: (calendarOpen) => set({ calendarOpen }),
   setComposing: (composing) => set({ composing }),
   setAiDrafting: (aiDrafting) => set({ aiDrafting }),
 

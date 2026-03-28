@@ -3,8 +3,9 @@
 import { SearchBar } from './SearchBar';
 import { AccountSwitcher } from './AccountSwitcher';
 import { useInboxStore } from '@/lib/store';
-import { RefreshCw, Keyboard, Menu } from 'lucide-react';
+import { RefreshCw, Keyboard, Menu, Calendar } from 'lucide-react';
 import { useState } from 'react';
+import clsx from 'clsx';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 
 interface HeaderProps {
@@ -16,6 +17,8 @@ interface HeaderProps {
 export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const setSidebarOpen = useInboxStore((s) => s.setSidebarOpen);
+  const calendarOpen = useInboxStore((s) => s.calendarOpen);
+  const setCalendarOpen = useInboxStore((s) => s.setCalendarOpen);
 
   return (
     <>
@@ -33,6 +36,18 @@ export function Header({ onSearch, onRefresh, isLoading }: HeaderProps) {
         <SearchBar onSearch={onSearch} />
 
         <div className="flex items-center gap-0.5 md:gap-1">
+          <button
+            onClick={() => setCalendarOpen(!calendarOpen)}
+            className={clsx(
+              'rounded-lg p-2 transition',
+              calendarOpen ? 'bg-accent-blue/10 text-accent-blue' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+            )}
+            title="Calendar"
+            aria-label="Toggle calendar"
+          >
+            <Calendar className="h-4 w-4" />
+          </button>
+
           <button
             onClick={onRefresh}
             disabled={isLoading}
