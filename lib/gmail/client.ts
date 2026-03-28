@@ -68,7 +68,8 @@ export async function getThread(accessToken: string, threadId: string): Promise<
       isStarred: messages.some((m) => m.isStarred),
       labels: [...new Set(messages.flatMap((m) => m.labels))],
     };
-  } catch {
+  } catch (error) {
+    console.error(`Failed to fetch thread ${threadId}:`, error);
     return null;
   }
 }
@@ -84,7 +85,8 @@ export async function getMessage(accessToken: string, messageId: string): Promis
     });
 
     return parseMessage(res.data);
-  } catch {
+  } catch (error) {
+    console.error(`Failed to fetch message ${messageId}:`, error);
     return null;
   }
 }
@@ -150,6 +152,11 @@ function parseEmailAddressList(raw: string): EmailAddress[] {
   return raw.split(',').map((a) => parseEmailAddress(a.trim())).filter((a) => a.email);
 }
 
+/** Sanitize a header value by stripping CRLF characters to prevent header injection. */
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[\r\n]/g, '');
+}
+
 // Gmail Actions
 
 export async function archiveThread(accessToken: string, threadId: string): Promise<void> {
@@ -203,14 +210,16 @@ export async function sendReply(
 ): Promise<string> {
   const gmail = getGmailClient(accessToken);
 
+  const safeTo = sanitizeHeaderValue(to);
+  const safeSubject = sanitizeHeaderValue(subject);
   const lines = [
-    `To: ${to}`,
-    `Subject: ${subject.startsWith('Re:') ? subject : `Re: ${subject}`}`,
+    `To: ${safeTo}`,
+    `Subject: ${safeSubject.startsWith('Re:') ? safeSubject : `Re: ${safeSubject}`}`,
     'Content-Type: text/plain; charset=utf-8',
     'MIME-Version: 1.0',
   ];
-  if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`);
-  if (references?.length) lines.push(`References: ${references.join(' ')}`);
+  if (inReplyTo) lines.push(`In-Reply-To: ${sanitizeHeaderValue(inReplyTo)}`);
+  if (references?.length) lines.push(`References: ${references.map(sanitizeHeaderValue).join(' ')}`);
   lines.push('', body);
 
   const raw = Buffer.from(lines.join('\r\n')).toString('base64url');
@@ -234,14 +243,16 @@ export async function createDraft(
 ): Promise<string> {
   const gmail = getGmailClient(accessToken);
 
+  const safeTo = sanitizeHeaderValue(to);
+  const safeSubject = sanitizeHeaderValue(subject);
   const lines = [
-    `To: ${to}`,
-    `Subject: ${subject.startsWith('Re:') ? subject : `Re: ${subject}`}`,
+    `To: ${safeTo}`,
+    `Subject: ${safeSubject.startsWith('Re:') ? safeSubject : `Re: ${safeSubject}`}`,
     'Content-Type: text/plain; charset=utf-8',
     'MIME-Version: 1.0',
   ];
-  if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`);
-  if (references?.length) lines.push(`References: ${references.join(' ')}`);
+  if (inReplyTo) lines.push(`In-Reply-To: ${sanitizeHeaderValue(inReplyTo)}`);
+  if (references?.length) lines.push(`References: ${references.map(sanitizeHeaderValue).join(' ')}`);
   lines.push('', body);
 
   const raw = Buffer.from(lines.join('\r\n')).toString('base64url');

@@ -7,6 +7,14 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { useInboxStore } from '@/lib/store';
 
+interface ExtractedTask {
+  title: string;
+  description?: string;
+  priority?: 'high' | 'medium' | 'low';
+  dueDate?: string;
+  threadId?: string;
+}
+
 interface AIActionsProps {
   thread: Thread;
   userEmail?: string;
@@ -26,7 +34,7 @@ export const AIActions = memo(function AIActions({ thread, userEmail, onDraftGen
   const [loading, setLoading] = useState<string | null>(null);
   const [selectedTone, setSelectedTone] = useState<DraftTone>('professional');
   const [draft, setDraft] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<any[] | null>(null);
+  const [tasks, setTasks] = useState<ExtractedTask[] | null>(null);
   const addTask = useInboxStore((s) => s.addTask);
 
   const handleDraft = async () => {
@@ -74,11 +82,12 @@ export const AIActions = memo(function AIActions({ thread, userEmail, onDraftGen
         body: JSON.stringify({ action: 'extract-tasks', thread }),
       });
       const data = await res.json();
-      setTasks(data.tasks);
+      const extractedTasks: ExtractedTask[] = Array.isArray(data.tasks) ? data.tasks : [];
+      setTasks(extractedTasks);
 
       const lastMsg = thread.messages[thread.messages.length - 1];
       const now = new Date().toISOString();
-      for (const task of data.tasks) {
+      for (const task of extractedTasks) {
         const gtmTask: GTMTask = {
           id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           threadId: thread.id,
@@ -94,7 +103,7 @@ export const AIActions = memo(function AIActions({ thread, userEmail, onDraftGen
         addTask(gtmTask);
       }
 
-      toast.success(`${data.tasks.length} task${data.tasks.length !== 1 ? 's' : ''} extracted and added`);
+      toast.success(`${extractedTasks.length} task${extractedTasks.length !== 1 ? 's' : ''} extracted and added`);
     } catch {
       toast.error('Failed to extract tasks');
     } finally {
@@ -201,7 +210,7 @@ export const AIActions = memo(function AIActions({ thread, userEmail, onDraftGen
         <div className="rounded-lg border border-accent-green/20 bg-bg-primary p-3">
           <div className="text-xs font-medium text-accent-green mb-2">Extracted Tasks</div>
           <ul className="space-y-1.5">
-            {tasks.map((task: any, i: number) => (
+            {tasks.map((task, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 <span
                   className={clsx(

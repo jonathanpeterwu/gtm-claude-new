@@ -17,6 +17,14 @@ interface MessageBubbleProps {
  * Sanitize and prepare HTML email content for safe rendering.
  */
 function sanitizeEmailHtml(html: string): string {
+  // Use DOMPurify hook to ensure all links open in new tab safely
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       'a', 'b', 'i', 'u', 'em', 'strong', 'p', 'br', 'div', 'span',
@@ -41,11 +49,9 @@ function sanitizeEmailHtml(html: string): string {
     FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover'],
   });
 
-  // Post-process: make all links open in new tab and add rel=noopener
-  return clean
-    .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
-    // Remove duplicate target attrs from the sanitizer
-    .replace(/target="_blank"\s+target="_blank"/g, 'target="_blank"');
+  DOMPurify.removeHook('afterSanitizeAttributes');
+
+  return clean;
 }
 
 /**
