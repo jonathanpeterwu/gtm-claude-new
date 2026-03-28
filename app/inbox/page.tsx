@@ -167,7 +167,7 @@ export default function InboxPage() {
     } finally {
       setLoading(false);
     }
-  }, [setThreads, setLoading, setCategories, activeAccountEmail]);
+  }, [setThreads, setLoading, setCategories, activeAccountEmail, session, inboxMode, mergeThreads, setThreadAccountMap, addTask]);
 
   useEffect(() => {
     if (session) fetchThreads();
@@ -178,7 +178,7 @@ export default function InboxPage() {
     if (!selectedThread || !selectedThread.isUnread) return;
     optimisticMarkRead(selectedThread.id);
     gmailAction('markRead', { threadId: selectedThread.id, account: activeAccountEmail }).catch(() => {});
-  }, [selectedThreadId]);
+  }, [selectedThreadId, selectedThread, optimisticMarkRead, activeAccountEmail]);
 
   // Optimistic archive with undo
   const handleArchive = useCallback(async () => {

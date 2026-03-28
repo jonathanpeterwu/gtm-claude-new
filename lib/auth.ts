@@ -42,8 +42,9 @@ export async function getLinkedAccountToken(
   const account = linkedAccounts[email];
   if (!account) return null;
 
-  // Check if token is still valid
-  if (Date.now() < account.expiresAt * 1000) {
+  // Check if token is still valid (refresh 60s early to avoid mid-request expiry)
+  const TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
+  if (Date.now() < account.expiresAt * 1000 - TOKEN_REFRESH_BUFFER_MS) {
     return { token: account.accessToken, updatedAccounts: linkedAccounts };
   }
 
@@ -126,7 +127,7 @@ export const authOptions: AuthOptions = {
           } else {
             token.error = 'RefreshAccessTokenError';
           }
-        } else if (typeof token.expiresAt === 'number' && Date.now() >= token.expiresAt * 1000 && token.refreshToken) {
+        } else if (typeof token.expiresAt === 'number' && Date.now() >= (token.expiresAt * 1000 - 60000) && token.refreshToken) {
           // Fallback: refresh using legacy fields via shared helper
           try {
             const refreshed = await refreshAccountToken({
