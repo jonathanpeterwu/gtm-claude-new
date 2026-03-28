@@ -11,6 +11,7 @@ import {
   ChevronDown, Calendar as CalendarIcon, Flag, Mail,
 } from 'lucide-react';
 import clsx from 'clsx';
+import toast from 'react-hot-toast';
 
 const STATUS_OPTIONS: { value: GTMTask['status']; label: string; icon: typeof Circle; color: string }[] = [
   { value: 'todo', label: 'To Do', icon: Circle, color: 'text-text-muted' },
@@ -87,6 +88,27 @@ export default function TasksPage() {
     const statuses: GTMTask['status'][] = ['todo', 'in_progress', 'waiting', 'done'];
     const next = statuses[(statuses.indexOf(task.status) + 1) % statuses.length];
     updateTask(task.id, { status: next, updatedAt: new Date().toISOString() });
+  };
+
+  const handleDeleteTask = (task: GTMTask) => {
+    removeTask(task.id);
+    toast.success(
+      (t) => (
+        <span className="flex items-center gap-2 text-sm">
+          Deleted
+          <button
+            onClick={() => {
+              addTask(task);
+              toast.dismiss(t.id);
+            }}
+            className="font-medium text-accent-blue hover:underline"
+          >
+            Undo
+          </button>
+        </span>
+      ),
+      { duration: 4000 }
+    );
   };
 
   const cyclePriority = (task: GTMTask) => {
@@ -247,7 +269,7 @@ export default function TasksPage() {
                         </span>
                         <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
                           <button
-                            onClick={() => removeTask(task.id)}
+                            onClick={() => handleDeleteTask(task)}
                             className="rounded p-1 text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition"
                             title="Delete task"
                           >
@@ -257,7 +279,7 @@ export default function TasksPage() {
                       </div>
 
                       {task.description && (
-                        <p className="mt-0.5 text-xs text-text-muted line-clamp-1">{task.description}</p>
+                        <p className="mt-0.5 text-xs text-text-muted line-clamp-1" title={task.description}>{task.description}</p>
                       )}
 
                       <div className="mt-1.5 flex flex-wrap items-center gap-2 text-2xs">

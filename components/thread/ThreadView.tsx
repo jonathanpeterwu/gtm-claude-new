@@ -43,17 +43,19 @@ export function ThreadView({ thread, onBack, onArchive, onStar, userEmail }: Thr
         <button
           onClick={onBack}
           className="rounded p-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition"
+          aria-label="Back to inbox"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
 
-        <h2 className="flex-1 truncate text-base font-medium">{thread.subject}</h2>
+        <h2 className="flex-1 truncate text-base font-medium" title={thread.subject}>{thread.subject}</h2>
 
         <div className="flex items-center gap-1">
           <button
             onClick={onArchive}
             className="rounded-lg p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition"
             title="Archive (e)"
+            aria-label="Archive thread"
           >
             <Archive className="h-4 w-4" />
           </button>
@@ -61,6 +63,7 @@ export function ThreadView({ thread, onBack, onArchive, onStar, userEmail }: Thr
             onClick={onStar}
             className="rounded-lg p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition"
             title="Star (s)"
+            aria-label={thread.isStarred ? 'Unstar thread' : 'Star thread'}
           >
             <Star className={clsx('h-4 w-4', thread.isStarred && 'fill-accent-yellow text-accent-yellow')} />
           </button>

@@ -84,14 +84,16 @@ export function Sidebar() {
           {/* Desktop: collapse toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary hidden md:block"
+            className="rounded p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary hidden md:block"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
           {/* Mobile: close button */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary md:hidden"
+            className="rounded p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary md:hidden"
+            aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
           </button>
