@@ -89,13 +89,13 @@ export interface AutoResponseRule {
 
 export interface GTMTask {
   id: string;
-  threadId: string;
+  threadId?: string;
   title: string;
   description: string;
   status: 'todo' | 'in_progress' | 'waiting' | 'done';
   priority: 'high' | 'medium' | 'low';
   dueDate?: string;
-  contact: EmailAddress;
+  contact?: EmailAddress;
   createdAt: string;
   updatedAt: string;
 }

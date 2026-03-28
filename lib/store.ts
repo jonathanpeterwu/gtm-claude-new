@@ -36,6 +36,7 @@ interface InboxState {
   removeThread: (id: string) => void;
   addTask: (task: GTMTask) => void;
   updateTask: (id: string, updates: Partial<GTMTask>) => void;
+  removeTask: (id: string) => void;
   setSidebarOpen: (open: boolean) => void;
   setComposing: (composing: boolean) => void;
   setAiDrafting: (aiDrafting: boolean) => void;
@@ -107,6 +108,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     set((state) => ({
       tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     })),
+  removeTask: (id) => set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) })),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setComposing: (composing) => set({ composing }),
   setAiDrafting: (aiDrafting) => set({ aiDrafting }),
