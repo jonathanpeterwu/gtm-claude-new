@@ -61,7 +61,7 @@ function backgroundExtractTasks(threads: Thread[], addTask: (task: GTMTask) => v
           status: 'todo',
           priority: task.priority || 'medium',
           dueDate: task.dueDate || undefined,
-          contact: lastMsg?.from || { name: '', email: '' },
+          contact: lastMsg?.from,
           createdAt: now,
           updatedAt: now,
         });
