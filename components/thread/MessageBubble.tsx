@@ -6,6 +6,7 @@ import { Paperclip, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import clsx from 'clsx';
 import DOMPurify from 'dompurify';
+import { useThemeStore } from '@/lib/hooks/useTheme';
 
 interface MessageBubbleProps {
   message: Email;
@@ -81,6 +82,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: Me
   const [showHtml, setShowHtml] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeHeight, setIframeHeight] = useState(200);
+  const theme = useThemeStore((s) => s.theme);
 
   const hasHtml = !!message.bodyHtml;
 
@@ -116,9 +118,10 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: Me
     return () => iframe.removeEventListener('load', updateHeight);
   }, [expanded, showHtml, hasHtml, sanitizedHtml]);
 
-  // Build iframe srcdoc with theme-aware styles
+  // Build iframe srcdoc with theme-aware styles driven by app theme (not OS preference)
   const iframeSrcDoc = useMemo(() => {
     if (!sanitizedHtml) return '';
+    const isDark = theme === 'dark';
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -132,21 +135,13 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: Me
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.6;
-    color: #f4f4f5;
+    color: ${isDark ? '#f4f4f5' : '#0f172a'};
     background: transparent;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
-  @media (prefers-color-scheme: light) {
-    body { color: #0f172a; }
-    a { color: #2563eb; }
-    blockquote { border-color: #e2e8f0; color: #475569; }
-    hr { border-color: #e2e8f0; }
-    table { border-color: #e2e8f0; }
-    th, td { border-color: #e2e8f0; }
-  }
   a {
-    color: #60a5fa;
+    color: ${isDark ? '#60a5fa' : '#2563eb'};
     text-decoration: underline;
     text-underline-offset: 2px;
     word-break: break-all;
@@ -160,13 +155,13 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: Me
   blockquote {
     margin: 8px 0;
     padding: 4px 12px;
-    border-left: 3px solid #3f3f46;
-    color: #a1a1aa;
+    border-left: 3px solid ${isDark ? '#3f3f46' : '#e2e8f0'};
+    color: ${isDark ? '#a1a1aa' : '#475569'};
   }
   pre, code {
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
-    background: rgba(255,255,255,0.05);
+    background: ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'};
     border-radius: 4px;
   }
   pre { padding: 12px; overflow-x: auto; }
@@ -178,14 +173,14 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: Me
   }
   th, td {
     padding: 6px 10px;
-    border: 1px solid #27272a;
+    border: 1px solid ${isDark ? '#27272a' : '#e2e8f0'};
     text-align: left;
     font-size: 13px;
   }
   th { font-weight: 600; }
   hr {
     border: none;
-    border-top: 1px solid #27272a;
+    border-top: 1px solid ${isDark ? '#27272a' : '#e2e8f0'};
     margin: 12px 0;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -197,12 +192,12 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: Me
   h3 { font-size: 16px; }
   p { margin: 4px 0; }
   ul, ol { padding-left: 20px; }
-  .gmail_quote { color: #71717a; border-left: 2px solid #3f3f46; padding-left: 8px; margin: 8px 0; }
+  .gmail_quote { color: ${isDark ? '#71717a' : '#94a3b8'}; border-left: 2px solid ${isDark ? '#3f3f46' : '#e2e8f0'}; padding-left: 8px; margin: 8px 0; }
 </style>
 </head>
 <body>${sanitizedHtml}</body>
 </html>`;
-  }, [sanitizedHtml]);
+  }, [sanitizedHtml, theme]);
 
   return (
     <div className={clsx('rounded-lg border border-border-subtle transition', expanded ? 'bg-bg-secondary' : 'bg-bg-primary')}>
