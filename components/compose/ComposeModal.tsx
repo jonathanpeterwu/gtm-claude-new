@@ -1,17 +1,125 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Send, Loader2, Wand2 } from 'lucide-react';
 import { useInboxStore } from '@/lib/store';
+import { EmailAddress } from '@/types';
 import toast from 'react-hot-toast';
 
 export function ComposeModal() {
   const setComposing = useInboxStore((s) => s.setComposing);
   const activeAccountEmail = useInboxStore((s) => s.activeAccountEmail);
+  const threads = useInboxStore((s) => s.threads);
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [contacts, setContacts] = useState<EmailAddress[]>([]);
+  const [suggestions, setSuggestions] = useState<EmailAddress[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Extract contacts from loaded threads + fetch from API
+  useEffect(() => {
+    const contactMap = new Map<string, EmailAddress>();
+
+    // Extract from loaded threads
+    for (const thread of threads) {
+      for (const msg of thread.messages) {
+        if (msg.from.email) contactMap.set(msg.from.email, msg.from);
+        for (const addr of msg.to) {
+          if (addr.email) contactMap.set(addr.email, addr);
+        }
+        for (const addr of msg.cc) {
+          if (addr.email) contactMap.set(addr.email, addr);
+        }
+      }
+    }
+
+    // Remove own email from suggestions
+    if (activeAccountEmail) contactMap.delete(activeAccountEmail);
+
+    setContacts(Array.from(contactMap.values()).sort((a, b) => a.email.localeCompare(b.email)));
+
+    // Also fetch from sent messages for more complete list
+    const accountParam = activeAccountEmail ? `&account=${encodeURIComponent(activeAccountEmail)}` : '';
+    fetch(`/api/gmail?action=contacts${accountParam}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.contacts) {
+          for (const c of data.contacts) {
+            if (c.email && c.email !== activeAccountEmail) {
+              contactMap.set(c.email, c);
+            }
+          }
+          setContacts(Array.from(contactMap.values()).sort((a, b) => a.email.localeCompare(b.email)));
+        }
+      })
+      .catch(() => {}); // silently fail - local contacts still work
+  }, [threads, activeAccountEmail]);
+
+  // Filter suggestions based on input
+  const updateSuggestions = useCallback((value: string) => {
+    if (!value.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const query = value.toLowerCase();
+    const filtered = contacts.filter(
+      (c) => c.email.toLowerCase().includes(query) || c.name.toLowerCase().includes(query)
+    ).slice(0, 8);
+    setSuggestions(filtered);
+    setShowSuggestions(filtered.length > 0);
+    setSelectedSuggestionIndex(0);
+  }, [contacts]);
+
+  const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTo(value);
+    updateSuggestions(value);
+  };
+
+  const selectSuggestion = (contact: EmailAddress) => {
+    setTo(contact.email);
+    setShowSuggestions(false);
+    // Focus next field
+    const subjectInput = document.querySelector<HTMLInputElement>('input[placeholder="Subject"]');
+    subjectInput?.focus();
+  };
+
+  const handleToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      selectSuggestion(suggestions[selectedSuggestionIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current && !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSend = async () => {
     if (!to.trim() || !body.trim()) {
@@ -32,11 +140,14 @@ export function ComposeModal() {
           account: activeAccountEmail,
         }),
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to send');
+      }
       toast.success('Email sent');
       setComposing(false);
-    } catch {
-      toast.error('Failed to send email');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send email');
     } finally {
       setSending(false);
     }
@@ -73,14 +184,49 @@ export function ComposeModal() {
 
         {/* Fields */}
         <div className="px-4 py-2 space-y-0">
-          <input
-            type="email"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            placeholder="To"
-            autoFocus
-            className="w-full border-b border-border-subtle bg-transparent py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-          />
+          <div className="relative">
+            <input
+              ref={inputRef}
+              type="email"
+              value={to}
+              onChange={handleToChange}
+              onKeyDown={handleToKeyDown}
+              onFocus={() => { if (to.trim()) updateSuggestions(to); }}
+              placeholder="To"
+              autoFocus
+              autoComplete="off"
+              className="w-full border-b border-border-subtle bg-transparent py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border-subtle bg-bg-secondary shadow-lg"
+              >
+                {suggestions.map((contact, index) => (
+                  <button
+                    key={contact.email}
+                    type="button"
+                    onClick={() => selectSuggestion(contact)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${
+                      index === selectedSuggestionIndex
+                        ? 'bg-accent-blue/10 text-text-primary'
+                        : 'text-text-secondary hover:bg-bg-hover'
+                    }`}
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-blue/20 text-xs font-medium text-accent-blue shrink-0">
+                      {(contact.name || contact.email)[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {contact.name && contact.name !== contact.email.split('@')[0] && (
+                        <div className="truncate text-sm font-medium text-text-primary">{contact.name}</div>
+                      )}
+                      <div className="truncate text-xs text-text-muted">{contact.email}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <input
             type="text"
             value={subject}
