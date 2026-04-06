@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessTokenForAccount } from '@/lib/account-token';
-import { listThreads, getThread, archiveThread, starThread, markRead, markUnread, sendReply, createDraft, searchEmails } from '@/lib/gmail/client';
+import { listThreads, getThread, archiveThread, starThread, markRead, markUnread, sendReply, createDraft, searchEmails, getContacts } from '@/lib/gmail/client';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
       const q = searchParams.get('q') || '';
       const threads = await searchEmails(token, q);
       return NextResponse.json({ threads });
+    }
+
+    if (action === 'contacts') {
+      const contacts = await getContacts(token);
+      return NextResponse.json({ contacts });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });

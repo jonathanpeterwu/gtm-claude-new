@@ -21,6 +21,11 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
 
   const lastMsg = thread.messages[thread.messages.length - 1];
   const replyTo = lastMsg.from.email;
+  const replyMessageId = lastMsg.messageId;
+  const replyReferences = [
+    ...(lastMsg.references || []),
+    ...(lastMsg.messageId ? [lastMsg.messageId] : []),
+  ].filter(Boolean);
 
   const handleSend = async () => {
     if (!body.trim()) return;
@@ -35,12 +40,15 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
           to: replyTo,
           subject: thread.subject,
           body,
-          inReplyTo: lastMsg.id,
-          references: lastMsg.references,
+          inReplyTo: replyMessageId,
+          references: replyReferences,
           account: activeAccountEmail,
         }),
       });
-      if (!res.ok) throw new Error('Failed to send');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to send');
+      }
       toast.success('Reply sent');
       onClose();
     } catch {
@@ -62,8 +70,8 @@ export function ReplyComposer({ thread, userEmail, onClose, initialDraft }: Repl
           to: replyTo,
           subject: thread.subject,
           body,
-          inReplyTo: lastMsg.id,
-          references: lastMsg.references,
+          inReplyTo: replyMessageId,
+          references: replyReferences,
           account: activeAccountEmail,
         }),
       });

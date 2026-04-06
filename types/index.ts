@@ -15,6 +15,7 @@ export interface Email {
   hasAttachments: boolean;
   inReplyTo?: string;
   references?: string[];
+  messageId?: string;
 }
 
 export interface EmailAddress {

@@ -111,6 +111,7 @@ function parseMessage(msg: gmail_v1.Schema$Message): Email {
     hasAttachments: hasAttachments(msg.payload),
     inReplyTo: getHeader('In-Reply-To') || undefined,
     references: getHeader('References') ? getHeader('References').split(/\s+/) : undefined,
+    messageId: getHeader('Message-ID') || getHeader('Message-Id') || undefined,
   };
 }
 
@@ -203,9 +204,14 @@ export async function sendReply(
 ): Promise<string> {
   const gmail = getGmailClient(accessToken);
 
+  const isNewEmail = !threadId;
+  const formattedSubject = isNewEmail
+    ? subject
+    : subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+
   const lines = [
     `To: ${to}`,
-    `Subject: ${subject.startsWith('Re:') ? subject : `Re: ${subject}`}`,
+    `Subject: ${formattedSubject}`,
     'Content-Type: text/plain; charset=utf-8',
     'MIME-Version: 1.0',
   ];
@@ -217,7 +223,7 @@ export async function sendReply(
 
   const res = await gmail.users.messages.send({
     userId: 'me',
-    requestBody: { raw, threadId },
+    requestBody: { raw, ...(threadId ? { threadId } : {}) },
   });
 
   return res.data.id!;
@@ -234,9 +240,14 @@ export async function createDraft(
 ): Promise<string> {
   const gmail = getGmailClient(accessToken);
 
+  const isNewEmail = !threadId;
+  const formattedSubject = isNewEmail
+    ? subject
+    : subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+
   const lines = [
     `To: ${to}`,
-    `Subject: ${subject.startsWith('Re:') ? subject : `Re: ${subject}`}`,
+    `Subject: ${formattedSubject}`,
     'Content-Type: text/plain; charset=utf-8',
     'MIME-Version: 1.0',
   ];
@@ -248,7 +259,7 @@ export async function createDraft(
 
   const res = await gmail.users.drafts.create({
     userId: 'me',
-    requestBody: { message: { raw, threadId } },
+    requestBody: { message: { raw, ...(threadId ? { threadId } : {}) } },
   });
 
   return res.data.id!;
@@ -257,4 +268,51 @@ export async function createDraft(
 export async function searchEmails(accessToken: string, query: string): Promise<Thread[]> {
   const { threads } = await listThreads(accessToken, query, 20);
   return threads;
+}
+
+export async function getContacts(accessToken: string): Promise<EmailAddress[]> {
+  const gmail = getGmailClient(accessToken);
+
+  // Fetch recent sent messages to extract contacts
+  const res = await gmail.users.messages.list({
+    userId: 'me',
+    q: 'in:sent',
+    maxResults: 50,
+  });
+
+  if (!res.data.messages) return [];
+
+  const contactMap = new Map<string, EmailAddress>();
+
+  // Fetch message headers in batches
+  const batchSize = 10;
+  for (let i = 0; i < res.data.messages.length; i += batchSize) {
+    const batch = res.data.messages.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map((m) =>
+        gmail.users.messages.get({
+          userId: 'me',
+          id: m.id!,
+          format: 'metadata',
+          metadataHeaders: ['To', 'Cc'],
+        })
+      )
+    );
+
+    for (const msg of results) {
+      const headers = msg.data.payload?.headers || [];
+      for (const header of headers) {
+        if (header.name?.toLowerCase() === 'to' || header.name?.toLowerCase() === 'cc') {
+          const addresses = parseEmailAddressList(header.value || '');
+          for (const addr of addresses) {
+            if (addr.email && !contactMap.has(addr.email)) {
+              contactMap.set(addr.email, addr);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(contactMap.values()).sort((a, b) => a.email.localeCompare(b.email));
 }
